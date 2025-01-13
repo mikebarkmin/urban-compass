@@ -71,9 +71,13 @@ function activateButton(name, cityName) {
 }
 
 function generateCities() {
-  let stmt = "SELECT * FROM guess WHERE country = 'Germany' ORDER BY RANDOM() LIMIT 4"
-  if (window.location.hash === "#eu") {
-    stmt = "SELECT * FROM guess WHERE continent = 'EU' ORDER BY RANDOM() LIMIT 4"
+  const params = new URLSearchParams(window.location.search);
+  const population = params.get("population") || 15000;
+  let stmt = `SELECT * FROM guess WHERE country = 'Germany' AND population >= ${population} ORDER BY RANDOM() LIMIT 4`
+  if (params.get("region") === "eu") {
+    stmt = `SELECT * FROM guess WHERE continent = 'EU' AND population >= ${population} ORDER BY RANDOM() LIMIT 4`
+  } else if (params.get("region") === "world") { 
+    stmt = `SELECT * FROM guess WHERE population >= ${population} ORDER BY RANDOM() LIMIT 4`
   }
   const res = db.exec(
     stmt
@@ -226,6 +230,11 @@ function revealCities() {
     const spacer = document.createElement("div");
     spacer.className = "spacer";
     cityElement.append(spacer);
+
+    const country = document.createElement("div");
+    country.className = "country";
+    country.innerHTML = city.country + "(" + city.continent + ")";
+    cityElement.appendChild(country);
 
     const longitude = document.createElement("div");
     longitude.className = "longitude";
