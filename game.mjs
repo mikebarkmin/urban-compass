@@ -71,8 +71,12 @@ function activateButton(name, cityName) {
 }
 
 function generateCities() {
+  let stmt = "SELECT * FROM guess WHERE country = 'Germany' ORDER BY RANDOM() LIMIT 4"
+  if (window.location.hash === "#eu") {
+    stmt = "SELECT * FROM guess WHERE continent = 'EU' ORDER BY RANDOM() LIMIT 4"
+  }
   const res = db.exec(
-    "SELECT * FROM guess WHERE country = 'Germany' ORDER BY RANDOM() LIMIT 4"
+    stmt
   );
 
   gameState.cities = [];

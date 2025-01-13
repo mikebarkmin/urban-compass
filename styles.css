@@ -3,6 +3,18 @@ html, body {
     font-size: 20px;;
 }
 
+.modes {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.mode {
+    border: 1px solid black;
+    border-radius: 16px;
+    padding: 8px;
+}
+
 #cities {
     display: flex;
     flex-direction: row;
