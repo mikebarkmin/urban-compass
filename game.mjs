@@ -185,6 +185,13 @@ function checkCities() {
     const smallestPopulationCity = gameState.cities.reduce((acc, city) => {
         return acc.population < city.population ? acc : city;
     });
+
+    document.getElementById(maxNorthCity.name).getElementsByClassName("north")[0].classList.add("correct");
+    document.getElementById(maxSourthCity.name).getElementsByClassName("south")[0].classList.add("correct");
+    document.getElementById(maxEastCity.name).getElementsByClassName("east")[0].classList.add("correct");
+    document.getElementById(maxWestCity.name).getElementsByClassName("west")[0].classList.add("correct");
+    document.getElementById(largestPopulationCity.name).getElementsByClassName("largest")[0].classList.add("correct");
+    document.getElementById(smallestPopulationCity.name).getElementsByClassName("smallest")[0].classList.add("correct");
     
     let correct = 0;
     let wrong = 0;
