@@ -244,7 +244,7 @@ function revealCities() {
 
     const country = document.createElement("div");
     country.className = "country";
-    country.innerHTML = city.country + "(" + city.continent + ")";
+    country.innerHTML = city.country + " (" + city.continent + ")";
     cityElement.appendChild(country);
 
     const longitude = document.createElement("div");
