@@ -107,8 +107,12 @@ function generateCities() {
     const cityElement = document.createElement("div");
     cityElement.id = city.name;
     cityElement.className = "city";
-    cityElement.innerHTML = city.name;
     cities.appendChild(cityElement);
+
+    const cityName = document.createElement("div");
+    cityName.className = "name";
+    cityName.innerHTML = city.name;
+    cityElement.appendChild(cityName);
 
     const cardinalDirections = document.createElement("div");
     cardinalDirections.className = "cardinal-directions";
