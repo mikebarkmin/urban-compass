@@ -1,0 +1,91 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  partykit:
+    name: Deploy PartyKit server
+    runs-on: ubuntu-latest
+    outputs:
+      server-url: ${{ steps.server.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Deploy to PartyKit
+        run: npx partykit deploy
+        env:
+          PARTYKIT_TOKEN: ${{ secrets.PARTYKIT_TOKEN }}
+          PARTYKIT_LOGIN: ${{ secrets.PARTYKIT_LOGIN }}
+
+      # The room host the client connects to. Override it with a repository
+      # variable if the server lives on a custom domain.
+      - name: Resolve server URL
+        id: server
+        run: |
+          url="${{ vars.NEXT_PUBLIC_SERVER_URL }}"
+          if [ -z "$url" ]; then
+            name=$(node -p "require('./partykit.json').name")
+            url="${name}.${{ secrets.PARTYKIT_LOGIN }}.partykit.dev"
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build static site
+    needs: partykit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/configure-pages@v5
+        id: pages
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # `github.io/<repo>` unless Pages is served from a custom domain.
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          NEXT_PUBLIC_SERVER_URL: ${{ needs.partykit.outputs.server-url }}
+
+      # `_next/` would otherwise be swallowed by GitHub Pages' Jekyll pipeline.
+      - run: touch out/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

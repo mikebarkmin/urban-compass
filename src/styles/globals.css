@@ -1,1 +1,141 @@
 @import "tailwindcss";
+
+/* Urban Guessr — a dark "chart table" palette: deep navy paper, ink lines,
+   amber for the player's own turn, cyan for confirmed information. */
+@theme {
+  --color-chart-950: #070b14;
+  --color-chart-900: #0c1322;
+  --color-chart-850: #111a2d;
+  --color-chart-800: #16223a;
+  --color-chart-700: #1e2f4d;
+  --color-chart-600: #2b4468;
+  --color-chart-500: #3d5c85;
+  --color-chart-400: #6884ad;
+  --color-chart-300: #97aecd;
+  --color-chart-200: #c5d3e6;
+  --color-chart-100: #e6edf7;
+
+  --color-beacon-500: #f5a524;
+  --color-beacon-400: #ffbb4d;
+  --color-beacon-300: #ffd28a;
+
+  --color-signal-500: #2dd4bf;
+  --color-signal-400: #5eead4;
+
+  --color-alert-500: #f4708a;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+
+  --animate-appear: appear 0.35s ease-out both;
+  --animate-rise: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pulse-ring: pulse-ring 2s ease-out infinite;
+  --animate-drift: drift 18s ease-in-out infinite;
+
+  @keyframes appear {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse-ring {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-beacon-500) 55%, transparent);
+    }
+    70% {
+      box-shadow: 0 0 0 10px transparent;
+    }
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+
+  @keyframes drift {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(-2%, 1.5%, 0);
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-chart-950);
+    color: var(--color-chart-100);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Keep number inputs from sprouting spinners inside the compact controls. */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-beacon-500) 40%, transparent);
+  }
+}
+
+@layer components {
+  /* The faint graticule behind the whole app. */
+  .graticule {
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--color-chart-600) 22%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-chart-600) 22%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 56px 56px;
+  }
+
+  .panel {
+    background-color: color-mix(in oklab, var(--color-chart-900) 88%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-chart-600) 55%, transparent);
+    border-radius: 1rem;
+    backdrop-filter: blur(12px);
+  }
+
+  /* Scrollbars inside panels, so long lists do not break the dark surface. */
+  .thin-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-chart-600) transparent;
+  }
+  .thin-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .thin-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--color-chart-600);
+    border-radius: 999px;
+  }
+  .thin-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

@@ -1,381 +1,60 @@
-// German cities with coordinates (latitude, longitude) and population data
-// Source: Approximate data based on public information
+// Core city + category model shared by the client and the PartyKit server.
 
 export interface City {
   id: string;
+  /** The city's name as English uses it, and the fallback for every language. */
   name: string;
+  /** German exonym, where German uses a different name (Rome → Rom). */
+  nameDe?: string;
+  /** Country code as it appears in the source data, e.g. "D", "PT", "UKR". */
+  country?: string;
   latitude: number;
   longitude: number;
   population: number;
+  /**
+   * Metres above sea level at the city centre. Optional: the older sets do not
+   * carry it, and a set without it simply cannot offer the altitude cards.
+   */
+  elevation?: number;
+  /** Administrative area of the city proper, in km². Optional, as above. */
+  area?: number;
 }
 
-// Major German cities with their approximate coordinates and populations
-export const germanCities: City[] = [
-  {
-    id: "berlin",
-    name: "Berlin",
-    latitude: 52.5200,
-    longitude: 13.4050,
-    population: 3750000,
-  },
-  {
-    id: "hamburg",
-    name: "Hamburg",
-    latitude: 53.5511,
-    longitude: 9.9937,
-    population: 1900000,
-  },
-  {
-    id: "munich",
-    name: "Munich (München)",
-    latitude: 48.1351,
-    longitude: 11.5820,
-    population: 1500000,
-  },
-  {
-    id: "cologne",
-    name: "Cologne (Köln)",
-    latitude: 50.9375,
-    longitude: 6.9603,
-    population: 1100000,
-  },
-  {
-    id: "frankfurt",
-    name: "Frankfurt",
-    latitude: 50.1109,
-    longitude: 8.6821,
-    population: 760000,
-  },
-  {
-    id: "stuttgart",
-    name: "Stuttgart",
-    latitude: 48.7758,
-    longitude: 9.1829,
-    population: 630000,
-  },
-  {
-    id: "dusseldorf",
-    name: "Düsseldorf",
-    latitude: 51.2277,
-    longitude: 6.7735,
-    population: 620000,
-  },
-  {
-    id: "leipzig",
-    name: "Leipzig",
-    latitude: 51.3397,
-    longitude: 12.3731,
-    population: 600000,
-  },
-  {
-    id: "dortmund",
-    name: "Dortmund",
-    latitude: 51.5136,
-    longitude: 7.4653,
-    population: 590000,
-  },
-  {
-    id: "essen",
-    name: "Essen",
-    latitude: 51.4556,
-    longitude: 7.0116,
-    population: 585000,
-  },
-  {
-    id: "bremen",
-    name: "Bremen",
-    latitude: 53.0793,
-    longitude: 8.8017,
-    population: 570000,
-  },
-  {
-    id: "dresden",
-    name: "Dresden",
-    latitude: 51.0504,
-    longitude: 13.7373,
-    population: 560000,
-  },
-  {
-    id: "hannover",
-    name: "Hannover",
-    latitude: 52.3759,
-    longitude: 9.7320,
-    population: 540000,
-  },
-  {
-    id: "nuremberg",
-    name: "Nuremberg (Nürnberg)",
-    latitude: 49.4521,
-    longitude: 11.0767,
-    population: 530000,
-  },
-  {
-    id: "duisburg",
-    name: "Duisburg",
-    latitude: 51.4344,
-    longitude: 6.7623,
-    population: 500000,
-  },
-  {
-    id: "bochum",
-    name: "Bochum",
-    latitude: 51.4818,
-    longitude: 7.2165,
-    population: 365000,
-  },
-  {
-    id: "wuppertal",
-    name: "Wuppertal",
-    latitude: 51.2563,
-    longitude: 7.1878,
-    population: 360000,
-  },
-  {
-    id: "bielefeld",
-    name: "Bielefeld",
-    latitude: 52.0333,
-    longitude: 8.5333,
-    population: 335000,
-  },
-  {
-    id: "bonn",
-    name: "Bonn",
-    latitude: 50.7374,
-    longitude: 7.0982,
-    population: 335000,
-  },
-  {
-    id: "rostock",
-    name: "Rostock",
-    latitude: 54.0889,
-    longitude: 12.1400,
-    population: 209000,
-  },
-  {
-    id: "kiel",
-    name: "Kiel",
-    latitude: 54.3233,
-    longitude: 10.1228,
-    population: 247000,
-  },
-  {
-    id: "mainz",
-    name: "Mainz",
-    latitude: 50.0012,
-    longitude: 8.2476,
-    population: 220000,
-  },
-  {
-    id: "aachen",
-    name: "Aachen",
-    latitude: 50.7767,
-    longitude: 6.0839,
-    population: 265000,
-  },
-  {
-    id: "augsburg",
-    name: "Augsburg",
-    latitude: 48.3705,
-    longitude: 10.8978,
-    population: 295000,
-  },
-  {
-    id: "freiburg",
-    name: "Freiburg",
-    latitude: 47.9990,
-    longitude: 7.8421,
-    population: 235000,
-  },
-  {
-    id: "karlsruhe",
-    name: "Karlsruhe",
-    latitude: 49.0069,
-    longitude: 8.4037,
-    population: 310000,
-  },
-  {
-    id: "kassel",
-    name: "Kassel",
-    latitude: 51.3167,
-    longitude: 9.4833,
-    population: 200000,
-  },
-  {
-    id: "lubeck",
-    name: "Lübeck",
-    latitude: 53.8656,
-    longitude: 10.6894,
-    population: 215000,
-  },
-  {
-    id: "magdeburg",
-    name: "Magdeburg",
-    latitude: 52.1205,
-    longitude: 11.6276,
-    population: 240000,
-  },
-  {
-    id: "mannheim",
-    name: "Mannheim",
-    latitude: 49.4875,
-    longitude: 8.4660,
-    population: 315000,
-  },
-  {
-    id: "msster",
-    name: "Münster",
-    latitude: 51.9624,
-    longitude: 7.6256,
-    population: 315000,
-  },
-  {
-    id: "wiesbaden",
-    name: "Wiesbaden",
-    latitude: 50.0826,
-    longitude: 8.2468,
-    population: 280000,
-  },
-  {
-    id: "mohlin",
-    name: "Möhlint",
-    latitude: 53.7000,
-    longitude: 9.7000,
-    population: 10000,
-  },
-  {
-    id: "garmisch",
-    name: "Garmisch-Partenkirchen",
-    latitude: 47.4919,
-    longitude: 11.0936,
-    population: 27000,
-  },
-  {
-    id: "flensburg",
-    name: "Flensburg",
-    latitude: 54.7855,
-    longitude: 9.4386,
-    population: 90000,
-  },
-  {
-    id: "passau",
-    name: "Passau",
-    latitude: 48.5667,
-    longitude: 13.4500,
-    population: 53000,
-  },
-  {
-    id: "konstanz",
-    name: "Konstanz",
-    latitude: 47.6900,
-    longitude: 9.1800,
-    population: 85000,
-  },
-  {
-    id: "gorlitz",
-    name: "Görlitz",
-    latitude: 51.1500,
-    longitude: 14.9833,
-    population: 56000,
-  },
-  {
-    id: "saarbruecken",
-    name: "Saarbrücken",
-    latitude: 49.2339,
-    longitude: 6.9956,
-    population: 180000,
-  },
-  {
-    id: "trier",
-    name: "Trier",
-    latitude: 49.7556,
-    longitude: 6.6403,
-    population: 110000,
-  },
-];
+/**
+ * A city as it is sent to clients. While a round is being played the
+ * coordinates and population are withheld, otherwise every answer would be
+ * readable straight off the board.
+ */
+export interface PublicCity {
+  id: string;
+  name: string;
+  nameDe?: string;
+  country?: string;
+  latitude: number | null;
+  longitude: number | null;
+  population: number | null;
+  elevation: number | null;
+  area: number | null;
+}
 
-// Category types for the game
-export type Category = 
+export type Category =
   | "northernmost"
   | "southernmost"
   | "easternmost"
   | "westernmost"
   | "most_population"
-  | "least_population";
+  | "least_population"
+  | "highest"
+  | "lowest"
+  | "largest_area"
+  | "smallest_area";
 
-// Scoring values for correct guesses based on queue position
-export const SCORING_VALUES: Record<number, number> = {
-  1: 10,  // First correct guess gets 10 points
-  2: 7,   // Second gets 7
-  3: 5,   // Third gets 5
-  4: 3,   // Fourth gets 3
-  5: 2,   // Fifth gets 2
-  6: 1,   // Sixth gets 1
-};
-
-// Category display names
-export const categoryDisplayNames: Record<Category, string> = {
-  northernmost: "Northernmost City",
-  southernmost: "Southernmost City",
-  easternmost: "Easternmost City",
-  westernmost: "Westernmost City",
-  most_population: "Most Inhabitants",
-  least_population: "Fewest Inhabitants",
-};
-
-// Determine the correct answer for each category based on a set of cities
-export const getCorrectAnswers = (cities: City[]): Record<Category, City> => {
-  if (cities.length === 0) {
-    throw new Error("No cities provided");
-  }
-  
-  // Find northernmost (highest latitude)
-  const northernmost = cities.reduce((max, city) => 
-    city.latitude > max.latitude ? city : max
-  );
-  
-  // Find southernmost (lowest latitude)
-  const southernmost = cities.reduce((min, city) => 
-    city.latitude < min.latitude ? city : min
-  );
-  
-  // Find easternmost (highest longitude)
-  const easternmost = cities.reduce((max, city) => 
-    city.longitude > max.longitude ? city : max
-  );
-  
-  // Find westernmost (lowest longitude)
-  const westernmost = cities.reduce((min, city) => 
-    city.longitude < min.longitude ? city : min
-  );
-  
-  // Find most population
-  const mostPopulation = cities.reduce((max, city) => 
-    city.population > max.population ? city : max
-  );
-  
-  // Find least population
-  const leastPopulation = cities.reduce((min, city) => 
-    city.population < min.population ? city : min
-  );
-  
-  return {
-    northernmost,
-    southernmost,
-    easternmost,
-    westernmost,
-    most_population: mostPopulation,
-    least_population: leastPopulation,
-  };
-};
-
-// Select a random subset of cities for a game round
-export const selectRandomCities = (count: number = 8): City[] => {
-  const shuffled = [...germanCities].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, Math.min(count, shuffled.length));
-};
-
-// Get all categories
-export const ALL_CATEGORIES: Category[] = [
+/**
+ * The six cards every set can offer, because every city carries coordinates
+ * and a population. This is what a room plays with unless the host says
+ * otherwise.
+ */
+export const CORE_CATEGORIES: Category[] = [
   "northernmost",
   "southernmost",
   "easternmost",
@@ -383,3 +62,354 @@ export const ALL_CATEGORIES: Category[] = [
   "most_population",
   "least_population",
 ];
+
+/**
+ * Every card the game knows about. The altitude and area pairs need a set that
+ * carries `elevation` / `area` on every city, so they are only offered when the
+ * pool actually supports them.
+ */
+export const ALL_CATEGORIES: Category[] = [
+  ...CORE_CATEGORIES,
+  "highest",
+  "lowest",
+  "largest_area",
+  "smallest_area",
+];
+
+/** The fewest cards a room can play with. */
+export const MIN_CATEGORIES = 3;
+
+// Points for a correct guess, by how early it was placed. Guessing a category
+// right after three other players have already done so is worth nothing.
+export const SCORING_VALUES: Record<number, number> = {
+  1: 3, // First player to place the right card on the right city
+  2: 2, // Second
+  3: 1, // Third
+};
+
+// Category display names
+/**
+ * Card glyphs. Deliberately plain geometric shapes and arrows rather than
+ * emoji: the medal and coloured-square emoji turned out to be missing from
+ * common fonts, and a card that renders as an empty box is unplayable.
+ */
+export const categoryIcons: Record<Category, string> = {
+  northernmost: "↑",
+  southernmost: "↓",
+  easternmost: "→",
+  westernmost: "←",
+  most_population: "▲",
+  least_population: "▼",
+  highest: "⇧",
+  lowest: "⇩",
+  largest_area: "■",
+  smallest_area: "□",
+};
+
+/**
+ * What each category measures, and which end of it wins. `dir: 1` means the
+ * largest value takes the category, `-1` the smallest.
+ */
+type MetricField = "latitude" | "longitude" | "population" | "elevation" | "area";
+
+const CATEGORY_METRIC: Record<Category, { field: MetricField; dir: 1 | -1 }> = {
+  northernmost: { field: "latitude", dir: 1 },
+  southernmost: { field: "latitude", dir: -1 },
+  easternmost: { field: "longitude", dir: 1 },
+  westernmost: { field: "longitude", dir: -1 },
+  most_population: { field: "population", dir: 1 },
+  least_population: { field: "population", dir: -1 },
+  highest: { field: "elevation", dir: 1 },
+  lowest: { field: "elevation", dir: -1 },
+  largest_area: { field: "area", dir: 1 },
+  smallest_area: { field: "area", dir: -1 },
+};
+
+/** Which field a card is decided on. */
+export const categoryField = (category: Category): MetricField =>
+  CATEGORY_METRIC[category].field;
+
+/**
+ * The value a category is decided on, or null when this city has nothing to
+ * say about it — an older set carries no elevation, for instance.
+ */
+export const categoryValue = (city: City, category: Category): number | null => {
+  const value = city[CATEGORY_METRIC[category].field];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+};
+
+/** Whether every city in the pool can answer this card. */
+export const categorySupported = (cities: City[], category: Category): boolean =>
+  cities.length > 0 && cities.every((city) => categoryValue(city, category) !== null);
+
+/** The cards a pool is able to offer at all. */
+export const supportedCategories = (cities: City[]): Category[] =>
+  ALL_CATEGORIES.filter((category) => categorySupported(cities, category));
+
+/**
+ * Every city that can answer `category`, ordered best first. Cities missing the
+ * figure drop out rather than sorting as zero, which would hand them the
+ * "lowest" card by accident.
+ */
+export const rankCitiesFor = (cities: City[], category: Category): City[] => {
+  const { dir } = CATEGORY_METRIC[category];
+  return cities
+    .filter((city) => categoryValue(city, category) !== null)
+    .sort(
+      (a, b) =>
+        ((categoryValue(b, category) as number) - (categoryValue(a, category) as number)) * dir,
+    );
+};
+
+/**
+ * The right answer for each card in play. A category with nothing to rank is
+ * simply absent, so callers check before scoring it.
+ */
+export const getCorrectAnswers = (
+  cities: City[],
+  categories: Category[] = CORE_CATEGORIES,
+): Partial<Record<Category, City>> => {
+  if (cities.length === 0) {
+    throw new Error("No cities provided");
+  }
+
+  const answers: Partial<Record<Category, City>> = {};
+  for (const category of categories) {
+    const winner = rankCitiesFor(cities, category)[0];
+    if (winner) answers[category] = winner;
+  }
+  return answers;
+};
+
+/** The city that came second in a category — the near miss worth flagging. */
+export const runnerUpFor = (cities: City[], category: Category): City | null =>
+  rankCitiesFor(cities, category)[1] ?? null;
+
+/**
+ * A small deterministic PRNG. The daily puzzle needs everyone to get the same
+ * board from the same date, which `Math.random` cannot give us.
+ */
+export const mulberry32 = (seed: number): (() => number) => {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+/** Hash an arbitrary string into a seed for `mulberry32`. */
+export const seedFromString = (value: string): number => {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+};
+
+const shuffled = (pool: City[], random: () => number): City[] => {
+  const cities = [...pool];
+  for (let i = cities.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [cities[i], cities[j]] = [cities[j], cities[i]];
+  }
+  return cities;
+};
+
+/** How a round's cities are picked out of the pool. */
+export type BoardQuality = "random" | "balanced";
+
+/**
+ * A uniform random draw hands one city two or more categories in over 90% of
+ * rounds, and three or more in a third of them on the World set. That collapses
+ * six decisions into four and makes "pile everything onto the obvious outlier"
+ * the whole game, so a balanced draw keeps sampling for a board whose six
+ * answers are six different cities.
+ *
+ * A perfect spread is not always reachable — on a six-city board it is rare, and
+ * on a lopsided pool impossible — so the search is capped and falls back to the
+ * best board it saw.
+ */
+const MAX_DRAW_ATTEMPTS = 300;
+
+/** How many distinct cities answer the cards in play, and the worst hoarder. */
+const boardShape = (cities: City[], categories: Category[]) => {
+  const counts = new Map<string, number>();
+  for (const category of categories) {
+    const winner = rankCitiesFor(cities, category)[0];
+    if (!winner) continue;
+    counts.set(winner.id, (counts.get(winner.id) ?? 0) + 1);
+  }
+  if (counts.size === 0) return { distinct: 0, worst: 0 };
+  return { distinct: counts.size, worst: Math.max(...counts.values()) };
+};
+
+/**
+ * Draw the cities for a round. `balanced` rejection-samples for a board whose
+ * six answers are six different cities, keeping the best it found if it cannot
+ * get there within the attempt budget.
+ */
+export const drawBoard = (
+  pool: City[],
+  count: number = 8,
+  quality: BoardQuality = "balanced",
+  random: () => number = Math.random,
+  categories: Category[] = CORE_CATEGORIES,
+): City[] => {
+  const size = Math.min(count, pool.length);
+  if (quality === "random" || pool.length === 0) {
+    return shuffled(pool, random).slice(0, size);
+  }
+
+  let best: City[] = [];
+  let bestScore = -Infinity;
+  // The ideal board answers every card in play with a different city. With more
+  // cards than cities that is impossible, so the target is capped accordingly.
+  const ideal = Math.min(categories.length, size);
+
+  for (let attempt = 0; attempt < MAX_DRAW_ATTEMPTS; attempt++) {
+    const candidate = shuffled(pool, random).slice(0, size);
+    if (candidate.length === 0) return candidate;
+
+    const { distinct, worst } = boardShape(candidate, categories);
+    if (distinct >= ideal) {
+      return candidate;
+    }
+
+    // Otherwise prefer the widest spread, and among equals the board where no
+    // single city hoards as many categories.
+    const score = distinct * 10 - worst;
+    if (score > bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
+
+  return best;
+};
+
+/**
+ * What to call a city in a given language. Uploaded sets carry one name only,
+ * which is then used everywhere.
+ */
+export const cityName = (
+  city: Pick<City, "name" | "nameDe">,
+  locale: string,
+): string => (locale === "de" && city.nameDe ? city.nameDe : city.name);
+
+/** Format a population for display, e.g. 1_505_814 -> "1.51M". */
+export const formatPopulation = (population: number): string => {
+  if (population >= 1_000_000) return `${(population / 1_000_000).toFixed(2)}M`;
+  if (population >= 10_000) return `${Math.round(population / 1000)}k`;
+  return population.toLocaleString("en-US");
+};
+
+/** Format a coordinate as degrees with a hemisphere suffix. */
+export const formatCoordinate = (
+  value: number,
+  axis: "lat" | "lon",
+): string => {
+  const hemisphere =
+    axis === "lat" ? (value >= 0 ? "N" : "S") : value >= 0 ? "E" : "W";
+  return `${Math.abs(value).toFixed(2)}° ${hemisphere}`;
+};
+
+/** Great-circle distance in kilometres between two points, in degrees. */
+export const distanceKm = (
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number },
+): number => {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return Math.round(6371 * 2 * Math.asin(Math.sqrt(h)));
+};
+
+/**
+ * How far a guess was from the right answer, phrased for the card it was played
+ * on: kilometres for the compass cards, people, metres or km² for the rest.
+ *
+ * Returns a message key and its value rather than a sentence, because the
+ * player reading it may not be reading English. A city still missing the figure
+ * simply has nothing to report.
+ */
+export const missOf = (
+  guessed: PublicCity | City,
+  correct: City,
+  category: Category,
+): { key: string; value: string } | null => {
+  if (guessed.id === correct.id) return null;
+
+  const field = CATEGORY_METRIC[category].field;
+
+  if (field === "population") {
+    if (guessed.population === null || guessed.population === undefined) return null;
+    return {
+      key: "miss.people",
+      value: formatPopulation(Math.abs(correct.population - guessed.population)),
+    };
+  }
+
+  if (field === "elevation") {
+    if (guessed.elevation === null || guessed.elevation === undefined) return null;
+    if (correct.elevation === undefined) return null;
+    return {
+      key: "miss.metres",
+      value: Math.abs(correct.elevation - guessed.elevation).toLocaleString("en-US"),
+    };
+  }
+
+  if (field === "area") {
+    if (guessed.area === null || guessed.area === undefined) return null;
+    if (correct.area === undefined) return null;
+    return {
+      key: "miss.area",
+      value: Math.round(Math.abs(correct.area - guessed.area)).toLocaleString("en-US"),
+    };
+  }
+
+  if (guessed.latitude === null || guessed.longitude === null) return null;
+  return {
+    key: "miss.km",
+    value: distanceKm(
+      { latitude: guessed.latitude, longitude: guessed.longitude },
+      correct,
+    ).toLocaleString("en-US"),
+  };
+};
+
+/** How a card's answer is evidenced on the results screen. */
+export const evidenceOf = (
+  category: Category,
+  city: PublicCity | City,
+): string => {
+  switch (CATEGORY_METRIC[category].field) {
+    case "latitude":
+      return city.latitude === null || city.latitude === undefined
+        ? ""
+        : formatCoordinate(city.latitude, "lat");
+    case "longitude":
+      return city.longitude === null || city.longitude === undefined
+        ? ""
+        : formatCoordinate(city.longitude, "lon");
+    case "elevation":
+      return city.elevation === null || city.elevation === undefined
+        ? ""
+        : `${city.elevation.toLocaleString("en-US")} m`;
+    case "area":
+      return city.area === null || city.area === undefined
+        ? ""
+        : `${city.area.toLocaleString("en-US")} km²`;
+    default:
+      return city.population === null || city.population === undefined
+        ? ""
+        : formatPopulation(city.population);
+  }
+};

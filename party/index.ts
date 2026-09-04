@@ -1,111 +1,136 @@
 import type * as Party from "partykit/server";
 
-import { 
-  gameUpdater, 
-  initialGame, 
-  Action, 
-  ServerAction, 
+import {
+  gameUpdater,
+  initialGame,
   createUser,
+  CLIENT_ACTION_TYPES,
   GameState,
-  serializeQueues,
-  deserializeQueues
+  ClientGameState,
+  ServerAction,
 } from "../game/logic";
-import { ALL_CATEGORIES } from "../game/cities";
+import { City, PublicCity, supportedCategories } from "../game/cities";
 
-interface ServerMessage {
-  state: GameState;
-}
+/**
+ * Project the server's state onto what a client is allowed to see.
+ *
+ * While a round is in progress the coordinates and populations of the cities in
+ * play are withheld — otherwise "northernmost" and "most inhabitants" would be
+ * readable straight out of the websocket frame. The full pool is never sent at
+ * all; clients only need its size.
+ */
+const toPublicState = (state: GameState): ClientGameState => {
+  const revealed = state.phase === "round_over" || state.phase === "game_over";
 
-// Custom replacer function to handle Map serialization
-const replacer = (key: string, value: any) => {
-  if (value instanceof Map) {
-    return {
-      __type: "Map",
-      data: Array.from(value.entries()),
-    };
-  }
-  return value;
-};
+  const cities: PublicCity[] = state.cities.map((city: City) => ({
+    id: city.id,
+    name: city.name,
+    nameDe: city.nameDe,
+    country: city.country,
+    latitude: revealed ? city.latitude : null,
+    longitude: revealed ? city.longitude : null,
+    population: revealed ? city.population : null,
+    elevation: revealed ? (city.elevation ?? null) : null,
+    area: revealed ? (city.area ?? null) : null,
+  }));
 
-// Custom reviver function to handle Map deserialization
-const reviver = (key: string, value: any) => {
-  if (value && value.__type === "Map") {
-    return new Map(value.data);
-  }
-  return value;
-};
+  const { cityPool, ...rest } = state;
 
-// Serialize game state for broadcasting
-const serializeGameState = (state: GameState): string => {
-  // Convert queues Map to a serializable format
-  const queuesData = serializeQueues(state.queues);
-  
-  const serializableState = {
-    ...state,
-    queues: queuesData,
+  return {
+    ...rest,
+    cities,
+    cityPool: [],
+    poolSize: cityPool.length,
+    availableCategories: supportedCategories(cityPool),
+    revealed,
+    serverNow: Date.now(),
   };
-  
-  return JSON.stringify(serializableState, replacer);
-};
-
-// Deserialize game state from received message
-const deserializeGameState = (data: string): GameState => {
-  const parsed = JSON.parse(data, reviver);
-  
-  // Convert queues back to Map structure
-  if (parsed.queues && typeof parsed.queues === "object") {
-    parsed.queues = deserializeQueues(parsed.queues, ALL_CATEGORIES, parsed.cities || []);
-  }
-  
-  return parsed;
 };
 
 export default class Server implements Party.Server {
   private gameState: GameState;
+  /** The pending turn-clock timer, if the room is playing with one. */
+  private turnTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(readonly party: Party.Party) {
     this.gameState = initialGame();
-    console.log("Room created:", party.id);
-    console.log("Initial cities:", this.gameState.cities.map(c => c.name));
-    // party.storage.put;
   }
-  
-  onConnect(connection: Party.Connection, ctx: Party.ConnectionContext) {
-    // A websocket just connected!
 
-    // let's send a message to the connection
-    // conn.send();
-    this.gameState = gameUpdater(
-      { 
-        type: "UserEntered", 
-        user: createUser(connection.id)
-      },
-      this.gameState
-    );
-    console.log(`User ${connection.id} connected. Total users: ${this.gameState.users.length}`);
-    this.party.broadcast(serializeGameState(this.gameState));
+  private broadcast() {
+    this.party.broadcast(JSON.stringify(toPublicState(this.gameState)));
   }
-  
-  onClose(connection: Party.Connection) {
-    this.gameState = gameUpdater(
-      {
-        type: "UserExit",
-        user: createUser(connection.id),
+
+  /**
+   * Keep the room's timer in step with the state. Clocks live on the server so
+   * that a slow connection, a backgrounded tab or a closed laptop cannot stall
+   * everybody else — and so a client cannot fake the expiry to skip a turn.
+   */
+  private syncTurnClock() {
+    if (this.turnTimer !== null) {
+      clearTimeout(this.turnTimer);
+      this.turnTimer = null;
+    }
+
+    const { turnEndsAt, currentTurnUserId, phase } = this.gameState;
+    if (phase !== "playing" || turnEndsAt === null || !currentTurnUserId) return;
+
+    const deadline = turnEndsAt;
+    const userId = currentTurnUserId;
+
+    this.turnTimer = setTimeout(
+      () => {
+        this.turnTimer = null;
+        // The turn may have moved on between the timer firing and running.
+        if (
+          this.gameState.currentTurnUserId !== userId ||
+          this.gameState.turnEndsAt !== deadline
+        ) {
+          return;
+        }
+
+        this.apply({ type: "turn_timeout", user: createUser(userId) });
       },
-      this.gameState
+      Math.max(0, deadline - Date.now()),
     );
-    console.log(`User ${connection.id} disconnected`);
-    this.party.broadcast(serializeGameState(this.gameState));
   }
-  
-  onMessage(message: string, sender: Party.Connection) {
-    const action: ServerAction = {
-      ...(JSON.parse(message) as Action),
-      user: createUser(sender.id),
-    };
-    console.log(`Received action ${action.type} from user ${sender.id}`);
+
+  private apply(action: ServerAction) {
     this.gameState = gameUpdater(action, this.gameState);
-    this.party.broadcast(serializeGameState(this.gameState));
+    this.syncTurnClock();
+    this.broadcast();
+  }
+
+  onConnect(connection: Party.Connection) {
+    this.apply({ type: "UserEntered", user: createUser(connection.id) });
+  }
+
+  onClose(connection: Party.Connection) {
+    this.apply({ type: "UserExit", user: createUser(connection.id) });
+  }
+
+  onMessage(message: string, sender: Party.Connection) {
+    let payload: unknown;
+    try {
+      payload = JSON.parse(message);
+    } catch {
+      return;
+    }
+
+    if (!payload || typeof payload !== "object" || !("type" in payload)) {
+      return;
+    }
+
+    // Only actions a player is allowed to send get through; the turn clock is
+    // the room's to fire, not theirs.
+    const { type } = payload as { type: unknown };
+    if (typeof type !== "string" || !CLIENT_ACTION_TYPES.has(type)) {
+      return;
+    }
+
+    this.apply({
+      ...(payload as object),
+      user: createUser(sender.id),
+    } as ServerAction);
   }
 }
 

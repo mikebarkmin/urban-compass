@@ -6,8 +6,9 @@
     "dev": "next dev",
     "dev:server": "partykit dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "npx serve@latest out",
+    "lint": "next lint",
+    "deploy:server": "partykit deploy"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.14",
