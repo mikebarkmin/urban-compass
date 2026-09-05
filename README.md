@@ -31,6 +31,22 @@ code; the first player into a room is the host. Share the room code (or the
 
 Point the client at a different server with `NEXT_PUBLIC_SERVER_URL`.
 
+## Avatars
+
+Every player gets a randomized avatar on join — a hue and an animal emoji —
+shown on their puck in the lobby, on the board chips, the results screen and
+the podium. The lobby has an editor below the player list: a colour swatch
+row, a symbol grid, and a randomize button. Changes apply live, so everyone
+in the room sees the new avatar the moment it is picked.
+
+The emoji are rendered from self-hosted Twemoji SVGs (`public/emoji/`) rather
+than the system emoji font, so a puck looks the same on Windows, macOS, Linux
+and Android. The same applies to every other emoji in the app — city set icons,
+the mute toggle, the host crown, and emoji embedded in translated strings.
+Typographic symbols (the category arrows, button arrows, the copied
+checkmark) and the daily-share squares stay as text: the arrows are not emoji,
+and the squares go to the clipboard where a chat app renders them.
+
 ## Deploying
 
 The two halves deploy to two places: the client is a static export on **GitHub
@@ -332,3 +348,14 @@ answers only exist on the server until the reveal. Incoming messages are filtere
 against `CLIENT_ACTION_TYPES`, uploaded city pools are validated by
 `sanitizeCityPool` before they can touch the game state, and every host-only
 action re-checks `hostId` server-side.
+
+## Credits
+
+Emoji assets in `public/emoji/` are from [Twemoji](https://github.com/jdecked/twemoji)
+(continuation of Twitter's original set), licensed under
+[CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+City data in `public/cities5000.json` is derived from
+[GeoNames](https://www.geonames.org/) (`cities5000` and the alternate-names
+dump), preprocessed by `scripts/build-cities.mjs`. GeoNames is licensed under
+[CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
