@@ -8,6 +8,8 @@ import {
 import { City, SCORING_VALUES, categoryIcons } from "../../game/cities";
 import { Rich, useT } from "@/i18n";
 import { Badge, Button, Panel, cx } from "./ui";
+import { Emoji } from "./Emoji";
+import AvatarEditor from "./AvatarEditor";
 import CitySetPicker from "./CitySetPicker";
 import GameSettingsPanel from "./GameSettings";
 import PlayerList from "./PlayerList";
@@ -65,7 +67,7 @@ const Lobby = ({ gameState, username, roomId, dispatch }: LobbyProps) => {
               ? t("lobby.citySet.host")
               : t("lobby.citySet.guest", { player: gameState.hostId ?? "" })
           }
-          action={isHost ? <Badge tone="beacon">👑 {t("lobby.youHost")}</Badge> : undefined}
+          action={isHost ? <Badge tone="beacon"><Emoji symbol="👑" alt="" className="mr-0.5 inline h-3.5 w-3.5 align-[-2px]" />{t("lobby.youHost")}</Badge> : undefined}
         >
           <CitySetPicker
             citySetId={gameState.citySetId}
@@ -158,6 +160,14 @@ const Lobby = ({ gameState, username, roomId, dispatch }: LobbyProps) => {
           }
         >
           <PlayerList gameState={gameState} username={username} roomId={roomId} />
+
+          <div className="mt-4 border-t border-chart-800 pt-4">
+            <AvatarEditor
+              gameState={gameState}
+              username={username}
+              dispatch={dispatch}
+            />
+          </div>
 
           <div className="mt-4 rounded-lg border border-chart-700 bg-chart-950/60 p-3">
             <div className="text-[11px] font-semibold tracking-[0.14em] text-chart-400 uppercase">

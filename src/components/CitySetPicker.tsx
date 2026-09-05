@@ -22,6 +22,7 @@ import {
   type SavedCitySet,
 } from "@/data/savedSets";
 import { useLocale } from "@/i18n";
+import { Emoji } from "./Emoji";
 import { Badge, Button, cx } from "./ui";
 import MiniMap from "./MiniMap";
 import CitySetBuilder from "./CitySetBuilder";
@@ -129,7 +130,7 @@ const CitySetPicker = ({
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xl">{set.icon}</span>
+                      <Emoji symbol={set.icon} alt="" className="h-6 w-6" />
                       {active && <Badge tone="beacon">{t("picker.selected")}</Badge>}
                     </div>
                     <div className="mt-2 font-display text-sm font-semibold text-chart-100">
@@ -182,7 +183,7 @@ const CitySetPicker = ({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-lg">📍</span>
+              <Emoji symbol="📍" alt="" className="h-5 w-5" />
               <span className="font-display text-sm font-semibold text-chart-100">
                 {t("picker.upload.title")}
               </span>
@@ -405,7 +406,7 @@ const CitySetPicker = ({
 
       <div className="rounded-lg border border-chart-700 bg-chart-900/60 px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-sm">🎯</span>
+          <Emoji symbol="🎯" alt="" className="h-4 w-4" />
           <span className="text-xs text-chart-300">
             {t("set.playing", {
               set:

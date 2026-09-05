@@ -1,5 +1,6 @@
 import { ClientGameState, handSizeFor } from "../../game/logic";
 import { useT } from "@/i18n";
+import { Emoji } from "./Emoji";
 import { Avatar, Badge, cx } from "./ui";
 
 interface PlayerListProps {
@@ -35,6 +36,7 @@ const PlayerList = ({ gameState, username, roomId, showProgress }: PlayerListPro
             <Avatar
               name={user.id}
               seed={user.id + roomId}
+              avatar={user.avatar}
               ring={isActive ? "active" : isDone ? "done" : null}
             />
 
@@ -42,7 +44,11 @@ const PlayerList = ({ gameState, username, roomId, showProgress }: PlayerListPro
               <div className="flex items-center gap-1.5">
                 <span className="truncate text-sm text-chart-100">{user.id}</span>
                 {isYou && <span className="text-[10px] text-chart-500">{t("players.you")}</span>}
-                {gameState.hostId === user.id && <span title={t("players.host")}>👑</span>}
+                {gameState.hostId === user.id && (
+                  <span title={t("players.host")}>
+                    <Emoji symbol="👑" alt={t("players.host")} className="inline h-3.5 w-3.5 align-[-2px]" />
+                  </span>
+                )}
               </div>
               {showProgress && (
                 <div className="mt-1 flex items-center gap-2">

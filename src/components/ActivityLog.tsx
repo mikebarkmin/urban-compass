@@ -2,6 +2,7 @@ import { LogEntry } from "../../game/logic";
 import { getCitySet } from "../../game/citySets";
 import { ALL_CATEGORIES, Category } from "../../game/cities";
 import { useLocale, type Params, type TFunction } from "@/i18n";
+import { EmojiText } from "./Emoji";
 import { Panel } from "./ui";
 
 const timeOf = (dt: number, locale: string) =>
@@ -48,7 +49,9 @@ const ActivityLog = ({ log }: { log: LogEntry[] }) => {
             <span className="shrink-0 font-mono text-[10px] text-chart-600">
               {timeOf(entry.dt, locale)}
             </span>
-            <span className="text-chart-300">{t(entry.key, resolveParams(t, entry.params))}</span>
+            <span className="text-chart-300">
+              <EmojiText text={t(entry.key, resolveParams(t, entry.params))} emojiClassName="inline h-3.5 w-3.5 align-[-2px]" />
+            </span>
           </li>
         ))}
       </ul>

@@ -101,6 +101,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
   const [pendingSwapTo, setPendingSwapTo] = useState<string | null>(null);
 
   const me = gameState.users.find((u) => u.id === username);
+  const avatarOf = (userId: string) => gameState.users.find((u) => u.id === userId)?.avatar;
   const isMyTurn = gameState.currentTurnUserId === username;
   const iAmDone = gameState.completedTurns.includes(username);
   const activePlayer = gameState.currentTurnUserId;
@@ -297,7 +298,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             {activePlayer && (
-              <Avatar name={activePlayer} seed={activePlayer + roomId} ring="active" size={32} />
+              <Avatar name={activePlayer} seed={activePlayer + roomId} avatar={avatarOf(activePlayer)} ring="active" size={32} />
             )}
             <div className="min-w-0">
               <div
@@ -561,6 +562,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                                 <Avatar
                                   name={guess.userId}
                                   seed={guess.userId + roomId}
+                                  avatar={avatarOf(guess.userId)}
                                   size={20}
                                 />
                                 {guess.doubled && (
@@ -575,7 +577,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                             ))}
                             {isPending && (
                               <span className="inline-flex items-center gap-1 rounded-full border border-beacon-500 bg-beacon-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-beacon-200">
-                                <Avatar name={username} seed={username + roomId} size={16} />
+                                <Avatar name={username} seed={username + roomId} avatar={avatarOf(username)} size={16} />
                                 {t("board.placeHere")}
                               </span>
                             )}
@@ -616,7 +618,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                               stealable ? "hover:ring-alert-500" : "hover:ring-beacon-500",
                             )}
                           >
-                            <Avatar name={guess.userId} seed={guess.userId + roomId} size={28} />
+                            <Avatar name={guess.userId} seed={guess.userId + roomId} avatar={avatarOf(guess.userId)} size={28} />
                           </button>
                         ))}
                       </div>
@@ -654,7 +656,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
               )}
               {actionMode === "steal" && stealTarget && (
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-chart-950/20 bg-chart-950/10 px-2.5 py-1 text-sm font-semibold text-chart-950">
-                  <Avatar name={stealTarget.userId} seed={stealTarget.userId + roomId} size={18} />
+                  <Avatar name={stealTarget.userId} seed={stealTarget.userId + roomId} avatar={avatarOf(stealTarget.userId)} size={18} />
                   {stealCity ? cityName(stealCity, locale) : ""}
                 </span>
               )}
@@ -665,7 +667,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
               )}
               {actionMode === "doubt" && doubtTarget && (
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-chart-950/20 bg-chart-950/10 px-2.5 py-1 text-sm font-semibold text-chart-950">
-                  <Avatar name={doubtTarget.userId} seed={doubtTarget.userId + roomId} size={18} />
+                  <Avatar name={doubtTarget.userId} seed={doubtTarget.userId + roomId} avatar={avatarOf(doubtTarget.userId)} size={18} />
                   {doubtCity ? cityName(doubtCity, locale) : ""}
                 </span>
               )}

@@ -20,6 +20,7 @@ import {
   getCitySet,
   sanitizeCityPool,
 } from "./citySets";
+import { AvatarConfig, randomAvatar, sanitizeAvatar } from "./avatar";
 
 // The maximum log size, change as needed
 const MAX_LOG_SIZE = 12;
@@ -76,6 +77,8 @@ export interface User {
   doubleDownAvailable: boolean;
   /** Whether the player has spent their one power-up this round. */
   powerUpUsed: boolean;
+  /** The player's editable avatar, randomised on join. */
+  avatar: AvatarConfig;
 }
 
 /**
@@ -349,6 +352,7 @@ type GameAction =
   | { type: "upload_city_set"; name: string; cities: unknown }
   | { type: "update_settings"; settings: Partial<GameSettings> }
   | { type: "set_categories"; categories: Category[] }
+  | { type: "update_avatar"; avatar: AvatarConfig }
   | { type: "turn_timeout" };
 
 /**
@@ -369,6 +373,7 @@ export const CLIENT_ACTION_TYPES: ReadonlySet<string> = new Set([
   "upload_city_set",
   "update_settings",
   "set_categories",
+  "update_avatar",
 ]);
 
 // Helper to create a new user
@@ -383,6 +388,7 @@ export const createUser = (id: string): User => ({
   burned: 0,
   doubleDownAvailable: false,
   powerUpUsed: false,
+  avatar: randomAvatar(),
 });
 
 /** Everybody who bet the winning city for a category, earliest placement first. */
@@ -1560,6 +1566,18 @@ export const gameUpdater = (action: ServerAction, state: GameState): GameState =
         retire ? "log.timedOutRetired" : "log.timedOut",
         { player: action.user.id },
       );
+    }
+
+    case "update_avatar": {
+      // A player can re-skin their own puck at any time. The choice is sanitised
+      // so a bad frame cannot push arbitrary emoji or an out-of-range hue.
+      const avatar = sanitizeAvatar(action.avatar);
+      return {
+        ...state,
+        users: state.users.map((user) =>
+          user.id === action.user.id ? { ...user, avatar } : user,
+        ),
+      };
     }
   }
 };

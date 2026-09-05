@@ -11,6 +11,7 @@ import { saveSet, updateSavedSet } from "@/data/savedSets";
 import { exportKmz } from "@/utils/kmzExport";
 import { filterCities, matchingCities, type FilterParams } from "@/data/cityFilter";
 import { useLocale } from "@/i18n";
+import { Emoji } from "./Emoji";
 import { Badge, Button, cx, inputClass } from "./ui";
 import MiniMap from "./MiniMap";
 
@@ -270,7 +271,7 @@ const CitySetBuilder = ({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-lg">{isEditing ? "✏️" : "🧩"}</span>
+            <Emoji symbol={isEditing ? "✏️" : "🧩"} alt="" className="h-5 w-5" />
             <span className="font-display text-sm font-semibold text-chart-100">
               {isEditing ? t("editor.title") : t("builder.title")}
             </span>

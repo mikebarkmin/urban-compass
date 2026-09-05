@@ -75,6 +75,12 @@ export const en = {
   "lobby.needPlayers": "Need {count} players",
   "lobby.waitingHost": "Waiting for {player} to start…",
 
+  "avatar.yours": "Your avatar",
+  "avatar.hint": "Random to start — tap to change it. Everyone sees your pick.",
+  "avatar.randomize": "Randomize",
+  "avatar.color": "Colour",
+  "avatar.symbol": "Symbol",
+
   "settings.cycles.label": "Rounds per player",
   "settings.cycles.hint_one":
     "The game runs until everyone has opened a round. With {players} that is 1 round.",
@@ -575,6 +581,12 @@ export const de: Record<MessageKey, string> = {
   "lobby.start": "{total} starten",
   "lobby.needPlayers": "{count} Mitspielende nötig",
   "lobby.waitingHost": "Warte darauf, dass {player} startet …",
+
+  "avatar.yours": "Dein Avatar",
+  "avatar.hint": "Anfangs zufällig — tippe zum Ändern. Alle sehen deine Wahl.",
+  "avatar.randomize": "Zufällig",
+  "avatar.color": "Farbe",
+  "avatar.symbol": "Symbol",
 
   "settings.cycles.label": "Runden pro Person",
   "settings.cycles.hint_one":

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Action, ClientGameState, MIN_PLAYERS } from "../../game/logic";
 import { useT } from "@/i18n";
 import { useSound } from "@/hooks/useSound";
+import { EmojiText } from "./Emoji";
 import { Avatar, Badge, Button, cx, useCountUp } from "./ui";
 import Confetti from "./Confetti";
 
@@ -93,7 +94,7 @@ const GameOver = ({ gameState, username, roomId, dispatch }: GameOverProps) => {
                   score: top.score,
                 })
               : top
-                ? t("gameover.wins", { player: top.id, score: top.score })
+                ? <EmojiText text={t("gameover.wins", { player: top.id, score: top.score })} emojiClassName="inline h-5 w-5 align-[-3px]" />
                 : t("gameover.over")}
           </div>
           <div className="mt-1 text-xs text-chart-400">
@@ -151,6 +152,7 @@ const GameOver = ({ gameState, username, roomId, dispatch }: GameOverProps) => {
                 <Avatar
                   name={user.id}
                   seed={user.id + roomId}
+                  avatar={user.avatar}
                   size={rank === 0 ? 40 : 32}
                   ring={rank === 0 ? "active" : null}
                 />

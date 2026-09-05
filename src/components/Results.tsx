@@ -145,6 +145,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
   }, [answerableCategories]);
 
   const ranked = [...gameState.users].sort((a, b) => b.score - a.score);
+  const avatarOf = (userId: string) => gameState.users.find((u) => u.id === userId)?.avatar;
   const leader = ranked[0];
   const finished = gameState.phase === "game_over";
 
@@ -420,6 +421,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
                               <Avatar
                                 name={guess.userId}
                                 seed={guess.userId + roomId}
+                                avatar={avatarOf(guess.userId)}
                                 size={18}
                               />
                               {guess.userId}
@@ -468,7 +470,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
                                     : "text-chart-400",
                                 )}
                               >
-                                <Avatar name={userId} seed={userId + roomId} size={16} />
+                                <Avatar name={userId} seed={userId + roomId} avatar={avatarOf(userId)} size={16} />
                                 <span className="font-medium">{userId}</span>
                                 {doubled && (
                                   <span
@@ -572,7 +574,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
                   <span className="w-4 text-center font-display text-xs text-chart-500">
                     {index + 1}
                   </span>
-                  <Avatar name={user.id} seed={user.id + roomId} />
+                  <Avatar name={user.id} seed={user.id + roomId} avatar={user.avatar} />
                   <span className="min-w-0 flex-1 truncate text-sm text-chart-100">
                     {user.id}
                     {user.id === username && (

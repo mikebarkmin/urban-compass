@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import Game from "@/components/Game";
 import Layout from "@/components/Layout";
+import { Emoji } from "@/components/Emoji";
 import { Button, Field, Panel, inputClass } from "@/components/ui";
 import { randomRoomCode } from "@/utils";
 import { Rich, useLocale } from "@/i18n";
@@ -107,7 +108,7 @@ export default function Home() {
                   ["🎭", t("home.feature.hidden")],
                 ].map(([icon, text]) => (
                   <li key={text} className="flex items-start gap-3">
-                    <span className="text-base">{icon}</span>
+                    <Emoji symbol={icon} alt="" className="mt-0.5 h-5 w-5 shrink-0" />
                     <span>{text}</span>
                   </li>
                 ))}
@@ -117,9 +118,7 @@ export default function Home() {
                 href="/daily"
                 className="mt-8 flex items-center gap-3 rounded-xl border border-chart-700 bg-chart-850/60 px-4 py-3 transition-colors hover:border-beacon-500/60 hover:bg-beacon-500/10"
               >
-                <span className="text-xl" aria-hidden>
-                  📅
-                </span>
+                <Emoji symbol="📅" alt="" className="h-6 w-6" />
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold text-chart-100">
                     {t("home.daily.title")}

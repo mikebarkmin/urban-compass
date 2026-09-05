@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Space_Grotesk, Inter } from "next/font/google";
 import { LOCALES, LOCALE_LABELS, useLocale } from "@/i18n";
 import { useSound } from "@/hooks/useSound";
+import { Emoji } from "./Emoji";
 import { cx } from "./ui";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -62,7 +63,7 @@ const MuteToggle = () => {
         muted && "text-chart-600",
       )}
     >
-      {muted ? "🔇" : "🔊"}
+      {muted ? <Emoji symbol="🔇" alt={t("app.unmute")} className="h-5 w-5" /> : <Emoji symbol="🔊" alt={t("app.mute")} className="h-5 w-5" />}
     </button>
   );
 };

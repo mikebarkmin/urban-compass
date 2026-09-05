@@ -1,5 +1,7 @@
 import { ButtonHTMLAttributes, ReactNode, useEffect, useRef, useState } from "react";
 import { stringToColor } from "@/utils";
+import { AvatarConfig, avatarColor } from "../../game/avatar";
+import { symbolUrl } from "@/utils/emoji";
 
 export const cx = (...classes: (string | false | null | undefined)[]) =>
   classes.filter(Boolean).join(" ");
@@ -100,33 +102,53 @@ export const Badge = ({
   );
 };
 
-/** A player's colour puck, derived from their name so it is stable per room. */
+/** A player's colour puck. Shows their chosen emoji on their hue when an
+ *  avatar config is supplied, otherwise falls back to name-derived colour and
+ *  initials (e.g. for a player who has left the room but whose chips remain).
+ *  The emoji is drawn from a self-hosted Twemoji SVG so it looks the same on
+ *  every OS rather than depending on the system emoji font. */
 export const Avatar = ({
   name,
   seed,
   size = 28,
   ring,
+  avatar,
 }: {
   name: string;
   seed: string;
   size?: number;
   ring?: "active" | "done" | null;
+  avatar?: AvatarConfig;
 }) => (
   <span
     className={cx(
-      "inline-grid shrink-0 place-items-center rounded-full font-display font-bold text-chart-950",
+      "inline-grid shrink-0 place-items-center rounded-full font-display font-bold text-chart-950 leading-none",
       ring === "active" && "ring-2 ring-beacon-400 ring-offset-2 ring-offset-chart-900",
       ring === "done" && "ring-2 ring-signal-500/60 ring-offset-2 ring-offset-chart-900",
     )}
     style={{
       width: size,
       height: size,
+      // Initials only — the emoji is an <img> sized below.
       fontSize: size * 0.42,
-      backgroundColor: stringToColor(seed),
+      backgroundColor: avatar ? avatarColor(avatar.hue) : stringToColor(seed),
     }}
     title={name}
   >
-    {name.slice(0, 2).toUpperCase()}
+    {avatar ? (
+      // Self-hosted SVG icons: next/image adds no value here and would need a
+      // loader under static export, so a plain <img> is the lighter choice.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={symbolUrl(avatar.symbol)}
+        alt={name}
+        draggable={false}
+        // Fill the puck, leaving a small margin so the silhouette breathes.
+        style={{ width: size * 0.72, height: size * 0.72 }}
+      />
+    ) : (
+      name.slice(0, 2).toUpperCase()
+    )}
   </span>
 );
 
