@@ -123,6 +123,18 @@ export const en = {
   "settings.steals.on":
     "On: spend a turn naming what an opponent bet. Right, and you take the bet and its place in the queue. Wrong, and the card is gone.",
   "settings.steals.off": "Off: a turn can only be spent placing a card.",
+  "settings.doubts.label": "Doubts",
+  "settings.doubts.on":
+    "On: spend a turn doubting an opponent's bet on a city — no card named. If every card they laid there is wrong you bank 2; if any is right, your card burns. A bluffer's read without naming the category.",
+  "settings.doubts.off": "Off: you cannot challenge an opponent's bet.",
+  "settings.powerUps.label": "Power-ups",
+  "settings.powerUps.on":
+    "On: once a round, spend a turn moving one of your placed chips to another city. Opponents see the chip move but never which card it carries.",
+  "settings.powerUps.off": "Off: a placed chip stays where it lands.",
+  "settings.consolation.label": "Runner-up consolation",
+  "settings.consolation.on":
+    "On: the first player to bet a category's runner-up city banks 1 point — a near miss is worth something.",
+  "settings.consolation.off": "Off: only the right city scores.",
   "settings.on": "On",
   "settings.off": "Off",
   "settings.balanced": "Balanced",
@@ -208,6 +220,24 @@ export const en = {
   "board.yourCardsHere_other": "{count} of your cards here",
   "board.call": "call",
   "board.callTitle": "Name what {player} bet here",
+  "board.doubt": "doubt",
+  "board.doubtTitle": "Spend this turn doubting an opponent's bet on a city",
+  "board.doubtTitleChip": "Doubt {player}'s bet here",
+  "board.doubtConfirm": "Doubt it",
+  "board.doubtOnCity": "{player} on {city}",
+  "board.doubting": "Doubting a bet",
+  "board.swap": "Swap a chip",
+  "board.swapTitle": "Once a round: move one of your placed chips to another city",
+  "board.swapping": "Swapping a chip",
+  "board.swapFrom": "from {city} — pick a new city below",
+  "board.subDoubt": "Pick an opponent's chip to doubt their bet on that city.",
+  "board.subSwap": "Pick a destination city to move your chip to.",
+  "board.hand.doubting": "Doubt their bet",
+  "board.hand.swapping": "Move a chip",
+  "board.hand.sub.doubting": "Doubting {player}'s bet on {city}.",
+  "board.hand.sub.doubtPick": "Pick the opponent's chip you doubt, over on the board.",
+  "board.hand.sub.swapPickChip": "Tap one of your placed cards to choose which chip to move.",
+  "board.hand.sub.swapPickCity": "Moving {card} from {from} — pick the new city on the board.",
   "board.doubledHere": "{player} doubled down here",
 
   "players.title": "Players",
@@ -235,6 +265,7 @@ export const en = {
   "results.missed_one": "1 card missed",
   "results.missed_other": "{count} cards missed",
   "results.doubledTitle": "Played their 2× card",
+  "results.consolationTitle": "Doubt bonus and runner-up consolation",
   "results.wrong": "Wrong guesses",
   "results.correct": "Correct",
 
@@ -448,6 +479,15 @@ export const en = {
   "log.stealMissed":
     "{player} called {target}'s bet on {city} as {category} — wrong, and the card is gone. {next} is up.",
   "log.stealHit": "{player} read {target} exactly — {category} on {city} is theirs now. {next} is up.",
+  "log.doubtsOff": "Doubts are switched off at this table.",
+  "log.noSelfDoubt": "You cannot doubt yourself.",
+  "log.doubtNoBet": "{player} has no bet on {city} to doubt.",
+  "log.doubtHit": "{player} doubted {target}'s bet on {city} — every card there was wrong! +2 banked. {next} is up.",
+  "log.doubtMissed": "{player} doubted {target}'s bet on {city} — but a card there was right, and the doubter's card is gone. {next} is up.",
+  "log.powerUpsOff": "Power-ups are switched off at this table.",
+  "log.powerUpUsed": "You have already used your power-up this round.",
+  "log.swapNoChip": "You have no chip on that city to move.",
+  "log.swap": "{player} moved a chip from {from} to {to}. {next} is up.",
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -568,6 +608,18 @@ export const de: Record<MessageKey, string> = {
   "settings.steals.on":
     "An: Verwende einen Zug darauf, den Tipp einer anderen Person zu benennen. Richtig, und du nimmst den Tipp samt seinem Platz in der Reihe. Falsch, und die Karte ist weg.",
   "settings.steals.off": "Aus: Ein Zug kann nur zum Legen einer Karte verwendet werden.",
+  "settings.doubts.label": "Zweifeln",
+  "settings.doubts.on":
+    "An: Verwende einen Zug darauf, den Tipp einer anderen Person auf einer Stadt anzuzweifeln — ohne Karte zu nennen. Wenn jede Karte dort falsch ist, kassierst du 2; wenn eine stimmt, brennt deine Karte. Ein Bluff-Lesen ohne die Kategorie zu nennen.",
+  "settings.doubts.off": "Aus: Du kannst den Tipp einer anderen Person nicht anfochten.",
+  "settings.powerUps.label": "Power-ups",
+  "settings.powerUps.on":
+    "An: Einmal pro Runde verbringst du einen Zug damit, einen deiner platzierten Chips auf eine andere Stadt zu verschieben. Die anderen sehen den Chip wandern, aber nie, welche Karte er trägt.",
+  "settings.powerUps.off": "Aus: Ein platzierter Chip bleibt, wo er liegt.",
+  "settings.consolation.label": "Trost für Zweitplatzierte",
+  "settings.consolation.on":
+    "An: Wer als Erstes die Zweitstadt einer Kategorie tippt, kassiert 1 Punkt — ein beinahe richtiger Tipp ist etwas wert.",
+  "settings.consolation.off": "Aus: Nur die richtige Stadt bringt Punkte.",
   "settings.on": "An",
   "settings.off": "Aus",
   "settings.balanced": "Ausgewogen",
@@ -653,6 +705,24 @@ export const de: Record<MessageKey, string> = {
   "board.yourCardsHere_other": "{count} deiner Karten liegen hier",
   "board.call": "benennen",
   "board.callTitle": "Benenne, was {player} hier gesetzt hat",
+  "board.doubt": "zweifeln",
+  "board.doubtTitle": "Verwende diesen Zug, um den Tipp einer anderen Person auf einer Stadt anzuzweifeln",
+  "board.doubtTitleChip": "Zweifle {player}s Tipp hier an",
+  "board.doubtConfirm": "Zweifeln",
+  "board.doubtOnCity": "{player} auf {city}",
+  "board.doubting": "Tipp wird angezweifelt",
+  "board.swap": "Chip verschieben",
+  "board.swapTitle": "Einmal pro Runde: verschiebe einen deiner Chips auf eine andere Stadt",
+  "board.swapping": "Chip wird verschoben",
+  "board.swapFrom": "von {city} — wähle unten eine neue Stadt",
+  "board.subDoubt": "Wähle den Chip einer anderen Person, um deren Tipp auf dieser Stadt anzuzweifeln.",
+  "board.subSwap": "Wähle eine Zielstadt, auf die du deinen Chip verschieben willst.",
+  "board.hand.doubting": "Tipp anzweifeln",
+  "board.hand.swapping": "Chip verschieben",
+  "board.hand.sub.doubting": "Zweifelt {player}s Tipp auf {city} an.",
+  "board.hand.sub.doubtPick": "Wähle den Chip der Person, die du anzweifeln willst, dort auf dem Feld.",
+  "board.hand.sub.swapPickChip": "Tippe auf eine deiner gelegten Karten, um den Chip auszuwählen.",
+  "board.hand.sub.swapPickCity": "Verschiebe {card} von {from} — wähle die neue Stadt auf dem Feld.",
   "board.doubledHere": "{player} hat hier verdoppelt",
 
   "players.title": "Mitspielende",
@@ -680,6 +750,7 @@ export const de: Record<MessageKey, string> = {
   "results.missed_one": "1 Karte daneben",
   "results.missed_other": "{count} Karten daneben",
   "results.doubledTitle": "Hat die 2×-Karte gespielt",
+  "results.consolationTitle": "Zweifelbonus und Trost für Zweitplatzierte",
   "results.wrong": "Falsche Tipps",
   "results.correct": "Richtig",
 
@@ -893,4 +964,13 @@ export const de: Record<MessageKey, string> = {
   "log.stealMissed":
     "{player} hat {target}s Tipp auf {city} als {category} benannt — falsch, die Karte ist weg. {next} ist dran.",
   "log.stealHit": "{player} hat {target} genau gelesen — {category} auf {city} gehört jetzt ihnen. {next} ist dran.",
+  "log.doubtsOff": "An diesem Tisch wird nicht angezweifelt.",
+  "log.noSelfDoubt": "Dich selbst kannst du nicht anzweifeln.",
+  "log.doubtNoBet": "{player} hat keinen Tipp auf {city} zum Anzweifeln.",
+  "log.doubtHit": "{player} hat {target}s Tipp auf {city} angezweifelt — jede Karte dort war falsch! +2 kassiert. {next} ist dran.",
+  "log.doubtMissed": "{player} hat {target}s Tipp auf {city} angezweifelt — aber eine Karte dort stimmte, und die Karte des Anzweifelnden ist weg. {next} ist dran.",
+  "log.powerUpsOff": "An diesem Tisch sind keine Power-ups aktiv.",
+  "log.powerUpUsed": "Du hast dein Power-up diese Runde schon verwendet.",
+  "log.swapNoChip": "Du hast keinen Chip auf dieser Stadt zum Verschieben.",
+  "log.swap": "{player} hat einen Chip von {from} nach {to} verschoben. {next} ist dran.",
 };

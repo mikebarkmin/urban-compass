@@ -8,7 +8,9 @@ export type SoundCue =
   | "chime"
   | "buzz"
   | "drumroll"
-  | "fanfare";
+  | "fanfare"
+  | "doubt"
+  | "swap";
 
 interface SoundApi {
   /** Play a synthesised cue. No-op when muted or when motion is reduced. */
@@ -168,6 +170,38 @@ export const SoundProvider = ({ children }: { children: ReactNode }) => {
           osc.start(t);
           osc.stop(t + 0.32);
         });
+        return;
+      }
+
+      if (cue === "doubt") {
+        // A tense two-note question — a doubt is a public call.
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(330, now + 0.12);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.14, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.32);
+        return;
+      }
+
+      if (cue === "swap") {
+        // A quick upward swoop — a chip moving across the board.
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(523, now);
+        osc.frequency.exponentialRampToValueAtTime(988, now + 0.18);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.24);
       }
     },
     [muted, ensureContext],

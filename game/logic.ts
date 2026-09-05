@@ -10,6 +10,7 @@ import {
   SCORING_VALUES,
   drawBoard,
   getCorrectAnswers,
+  runnerUpFor,
 } from "./cities";
 import {
   CITY_SETS,
@@ -73,6 +74,8 @@ export interface User {
   burned: number;
   /** Whether the player still holds their 2× card. */
   doubleDownAvailable: boolean;
+  /** Whether the player has spent their one power-up this round. */
+  powerUpUsed: boolean;
 }
 
 /**
@@ -161,6 +164,25 @@ export interface GameSettings {
    * gone.
    */
   steals: boolean;
+  /**
+   * Whether a turn may be spent doubting an opponent's bet on a city. You name
+   * the player and the city but not the card: if every card they laid there is
+   * wrong, you bank 2 points; if any of them is right, your own card burns. A
+   * lighter, bluffer's read than a steal — you never have to name the category.
+   */
+  doubts: boolean;
+  /**
+   * Whether each player gets one power-up a round: spend a turn moving one of
+   * their already-placed chips to another city. Opponents see the chip move but
+   * never which card it carries, so it is a loud, public tell without an answer.
+   */
+  powerUps: boolean;
+  /**
+   * Whether the earliest player to bet a category's runner-up city banks 1
+   * consolation point. Near-misses stop feeling wasted, and it gives the player
+   * who almost had it something to chase late in a round.
+   */
+  runnerUpConsolation: boolean;
 }
 
 /** When a player gets their one 2× card: never, once a game, or once a round. */
@@ -195,6 +217,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
   wrongGuessPenalty: 0,
   doubleDown: "off",
   steals: false,
+  doubts: false,
+  powerUps: false,
+  runnerUpConsolation: false,
 };
 
 /** How many timed-out turns a player gets before they sit out the round. */
@@ -226,6 +251,8 @@ export interface GameState extends BaseGameState {
   /** Rounds played so far in the current game. */
   roundNumber: number;
   correctAnswers: Partial<Record<Category, City>> | null;
+  /** The runner-up city for each category at the reveal — for consolation scoring. */
+  runnerUps: Partial<Record<Category, City>> | null;
   roundStartTime: number | null;
   /** When the current player's clock runs out, or null when there is no clock. */
   turnEndsAt: number | null;
@@ -244,6 +271,12 @@ export interface GameState extends BaseGameState {
    * list resets — like a shuffled playlist that only repeats once exhausted.
    */
   usedCityIds: string[];
+  /**
+   * Points banked mid-round by successful doubts, keyed by user. Folded into
+   * `scoreRound` at the reveal so the results screen — which re-runs the same
+   * function — keeps a single source of truth. Reset every round.
+   */
+  doubtBonus: Record<string, number>;
 }
 
 /**
@@ -288,6 +321,7 @@ export const initialGame = (): GameState => {
     categoryGuesses: {},
     roundNumber: 0,
     correctAnswers: null,
+    runnerUps: null,
     roundStartTime: null,
     turnEndsAt: null,
     currentTurnUserId: null,
@@ -296,6 +330,7 @@ export const initialGame = (): GameState => {
     completedTurns: [],
     turnOrder: [],
     usedCityIds: [],
+    doubtBonus: {},
     log: addLog("log.roomCreated", []),
   };
 };
@@ -305,6 +340,8 @@ type GameAction =
   | { type: "start_game" }
   | { type: "place_guess"; category: Category; cityId: string; doubled?: boolean }
   | { type: "steal"; targetUserId: string; cityId: string; category: Category }
+  | { type: "doubt"; targetUserId: string; cityId: string }
+  | { type: "swap_chip"; category: Category; fromCityId: string; toCityId: string }
   | { type: "next_round" }
   | { type: "end_turn" }
   | { type: "back_to_lobby" }
@@ -323,6 +360,8 @@ export const CLIENT_ACTION_TYPES: ReadonlySet<string> = new Set([
   "start_game",
   "place_guess",
   "steal",
+  "doubt",
+  "swap_chip",
   "next_round",
   "end_turn",
   "back_to_lobby",
@@ -343,6 +382,7 @@ export const createUser = (id: string): User => ({
   timeouts: 0,
   burned: 0,
   doubleDownAvailable: false,
+  powerUpUsed: false,
 });
 
 /** Everybody who bet the winning city for a category, earliest placement first. */
@@ -383,6 +423,8 @@ export interface PlayerTotals {
   penalty: number;
   /** How many cards missed. */
   missed: number;
+  /** Points banked by doubts, and by runner-up consolation. */
+  consolation: number;
   total: number;
 }
 
@@ -391,7 +433,7 @@ export interface RoundOutcome {
   totals: Record<string, PlayerTotals>;
 }
 
-const emptyTotals = (): PlayerTotals => ({ earned: 0, penalty: 0, missed: 0, total: 0 });
+const emptyTotals = (): PlayerTotals => ({ earned: 0, penalty: 0, missed: 0, consolation: 0, total: 0 });
 
 /**
  * Score a finished round.
@@ -399,8 +441,9 @@ const emptyTotals = (): PlayerTotals => ({ earned: 0, penalty: 0, missed: 0, tot
  * The base game pays 3 · 2 · 1 to the first three players to get a category
  * right. The optional mechanics layer on top of that: a collision wipes a
  * category for everyone who tied on it, a 2× card doubles what a bet is worth
- * in both directions, and a miss penalty docks points for cards that landed on
- * the wrong city.
+ * in both directions, a miss penalty docks points for cards that landed on the
+ * wrong city, consolation pays 1 to the earliest bet on a category's runner-up
+ * city, and any points a player banked mid-round by doubting are folded in.
  */
 export const scoreRound = (
   users: User[],
@@ -408,6 +451,8 @@ export const scoreRound = (
   correctAnswers: Partial<Record<Category, City>>,
   categories: Category[],
   settings: GameSettings,
+  runnerUps: Partial<Record<Category, City>> = {},
+  doubtBonus: Record<string, number> = {},
 ): RoundOutcome => {
   const totals: Record<string, PlayerTotals> = {};
   for (const user of users) totals[user.id] = emptyTotals();
@@ -431,6 +476,20 @@ export const scoreRound = (
       return { guess, doubled, points };
     });
 
+    // Consolation: the earliest player to bet the runner-up city for this
+    // category banks 1 point, so a near miss is not worth nothing. Only the
+    // first such bet is paid, and only when it is not also the winner.
+    if (settings.runnerUpConsolation) {
+      const runnerUp = runnerUps[category];
+      if (runnerUp && runnerUp.id !== correctCity.id) {
+        const near = Object.values(categoryGuesses)
+          .map((guesses) => guesses[category])
+          .filter((guess): guess is Guess => !!guess && guess.cityId === runnerUp.id)
+          .sort((a, b) => a.timestamp - b.timestamp)[0];
+        if (near) totalsFor(near.userId).consolation += 1;
+      }
+    }
+
     results.push({ category, cityId: correctCity.id, contenders, collided });
   }
 
@@ -448,8 +507,9 @@ export const scoreRound = (
     }
   }
 
-  for (const entry of Object.values(totals)) {
-    entry.total = entry.earned - entry.penalty;
+  for (const [userId, entry] of Object.entries(totals)) {
+    entry.consolation += doubtBonus[userId] ?? 0;
+    entry.total = entry.earned + entry.consolation - entry.penalty;
   }
 
   return { categories: results, totals };
@@ -515,6 +575,8 @@ const resetUsersForRound = (
     // A per-round 2× card comes back every deal; a per-game one does not.
     doubleDownAvailable:
       settings.doubleDown === "round" ? true : user.doubleDownAvailable,
+    // A power-up is one use per round.
+    powerUpUsed: false,
   }));
 
 const withActiveUser = (users: User[], activeUserId: string | null): User[] =>
@@ -578,12 +640,19 @@ const pickStarter = (users: User[], starterCounts: Record<string, number>): stri
 /** Close the round: reveal the answers, award points, and see if that was it. */
 const finishRound = (state: GameState, users: User[], reasonKey: string): GameState => {
   const correctAnswers = getCorrectAnswers(state.cities, state.categories);
+  const runnerUps: Partial<Record<Category, City>> = {};
+  for (const category of state.categories) {
+    const runnerUp = runnerUpFor(state.cities, category);
+    if (runnerUp) runnerUps[category] = runnerUp;
+  }
   const outcome = scoreRound(
     users,
     state.categoryGuesses,
     correctAnswers,
     state.categories,
     state.settings,
+    runnerUps,
+    state.doubtBonus,
   );
   const scored = calculateScores(users, outcome);
   const finished = gameIsOver(state, scored);
@@ -600,6 +669,7 @@ const finishRound = (state: GameState, users: User[], reasonKey: string): GameSt
     ...state,
     users: withActiveUser(scored, null),
     correctAnswers,
+    runnerUps,
     phase: finished ? "game_over" : "round_over",
     currentTurnUserId: null,
     turnEndsAt: null,
@@ -652,6 +722,8 @@ const startRound = (state: GameState, roundNumber: number): GameState => {
     phase: "playing",
     roundNumber,
     correctAnswers: null,
+    runnerUps: null,
+    doubtBonus: {},
     currentTurnUserId: firstUserId,
     starterCounts,
     roundStarterId: starterId,
@@ -787,6 +859,18 @@ const applySettings = (
 
   if (typeof patch.steals === "boolean") {
     next.steals = patch.steals;
+  }
+
+  if (typeof patch.doubts === "boolean") {
+    next.doubts = patch.doubts;
+  }
+
+  if (typeof patch.powerUps === "boolean") {
+    next.powerUps = patch.powerUps;
+  }
+
+  if (typeof patch.runnerUpConsolation === "boolean") {
+    next.runnerUpConsolation = patch.runnerUpConsolation;
   }
 
   if (patch.wrongGuessPenalty !== undefined) {
@@ -1061,6 +1145,8 @@ export const gameUpdater = (action: ServerAction, state: GameState): GameState =
         cities: [],
         queues: {},
         correctAnswers: null,
+        runnerUps: null,
+        doubtBonus: {},
         currentTurnUserId: null,
         turnEndsAt: null,
         roundStarterId: null,
@@ -1270,6 +1356,174 @@ export const gameUpdater = (action: ServerAction, state: GameState): GameState =
           category: action.category,
         },
       );
+    }
+
+    case "doubt": {
+      if (state.phase !== "playing") {
+        return state;
+      }
+      if (state.currentTurnUserId !== action.user.id) {
+        return rejectWith(state, "log.notYourTurn", { player: state.currentTurnUserId ?? "" });
+      }
+      if (!state.settings.doubts) {
+        return rejectWith(state, "log.doubtsOff");
+      }
+      if (action.targetUserId === action.user.id) {
+        return rejectWith(state, "log.noSelfDoubt");
+      }
+
+      const city = state.cities.find((c) => c.id === action.cityId);
+      const target = state.users.find((u) => u.id === action.targetUserId);
+      if (!city || !target) {
+        return state;
+      }
+
+      const theirGuesses = state.categoryGuesses[action.targetUserId] ?? {};
+      const betsHere = state.categories
+        .map((category) => ({ category, guess: theirGuesses[category] }))
+        .filter(
+          (entry): entry is { category: Category; guess: Guess } =>
+            !!entry.guess && entry.guess.cityId === action.cityId,
+        );
+      if (betsHere.length === 0) {
+        return rejectWith(state, "log.doubtNoBet", {
+          player: action.targetUserId,
+          city: city.name,
+        });
+      }
+
+      // The server can resolve this any time — the answers only leave the
+      // server at the reveal, so a mid-round doubt never leaks anything to the
+      // rest of the table.
+      const correctAnswers = getCorrectAnswers(state.cities, state.categories);
+      const anyCorrect = betsHere.some(
+        (entry) => correctAnswers[entry.category]?.id === action.cityId,
+      );
+
+      if (!anyCorrect) {
+        // Every card the target laid here is wrong: the doubt lands, banking 2
+        // points for the reveal. No card is burned — the turn itself is the cost.
+        const doubtBonus = {
+          ...state.doubtBonus,
+          [action.user.id]: (state.doubtBonus[action.user.id] ?? 0) + 2,
+        };
+        const rewarded: GameState = { ...state, doubtBonus };
+        return passTurn(rewarded, action.user.id, false, "log.doubtHit", {
+          player: action.user.id,
+          target: action.targetUserId,
+          city: city.name,
+        });
+      }
+
+      // A correct card among the target's bets sinks the doubt: burn a card,
+      // just like a failed steal. The turn passes either way.
+      const users = state.users.map((user) =>
+        user.id === action.user.id
+          ? { ...user, burned: user.burned + 1, timeouts: 0 }
+          : user,
+      );
+      const missed: GameState = { ...state, users };
+      const doubter = users.find((u) => u.id === action.user.id);
+
+      return passTurn(
+        missed,
+        action.user.id,
+        doubter && handIsSpent(doubter, handSizeFor(missed)),
+        "log.doubtMissed",
+        {
+          player: action.user.id,
+          target: action.targetUserId,
+          city: city.name,
+        },
+      );
+    }
+
+    case "swap_chip": {
+      if (state.phase !== "playing") {
+        return state;
+      }
+      if (state.currentTurnUserId !== action.user.id) {
+        return rejectWith(state, "log.notYourTurn", { player: state.currentTurnUserId ?? "" });
+      }
+      if (!state.settings.powerUps) {
+        return rejectWith(state, "log.powerUpsOff");
+      }
+
+      const placer = state.users.find((u) => u.id === action.user.id);
+      if (!placer) {
+        return state;
+      }
+      if (placer.powerUpUsed) {
+        return rejectWith(state, "log.powerUpUsed");
+      }
+      if (!state.categories.includes(action.category)) {
+        return state;
+      }
+      if (action.fromCityId === action.toCityId) {
+        return state;
+      }
+
+      const fromCity = state.cities.find((c) => c.id === action.fromCityId);
+      const toCity = state.cities.find((c) => c.id === action.toCityId);
+      if (!fromCity || !toCity) {
+        return state;
+      }
+
+      const myGuess = state.categoryGuesses[action.user.id]?.[action.category];
+      if (!myGuess || myGuess.cityId !== action.fromCityId) {
+        return rejectWith(state, "log.swapNoChip");
+      }
+
+      // Pull the chip off the old city and append a fresh entry to the new one.
+      // A new timestamp means a late swap costs queue priority — the trade for
+      // getting to see everyone else bet first.
+      const fromQueue = (state.queues[action.fromCityId] ?? []).filter(
+        (g) => !(g.userId === action.user.id && g.timestamp === myGuess.timestamp),
+      );
+      const moved: Guess = {
+        userId: action.user.id,
+        cityId: action.toCityId,
+        timestamp: Date.now(),
+        ...(myGuess.doubled ? { doubled: true } : {}),
+      };
+      const toQueue = [...(state.queues[action.toCityId] ?? []), moved];
+
+      const queues: Queues = {
+        ...state.queues,
+        [action.fromCityId]: fromQueue,
+        [action.toCityId]: toQueue,
+      };
+
+      const categoryGuesses: CategoryGuesses = {
+        ...state.categoryGuesses,
+        [action.user.id]: {
+          ...state.categoryGuesses[action.user.id],
+          [action.category]: moved,
+        },
+      };
+
+      const users = state.users.map((user) =>
+        user.id === action.user.id
+          ? {
+              ...user,
+              placedGuesses: user.placedGuesses.map((g) =>
+                g.category === action.category && g.cityId === action.fromCityId
+                  ? { ...g, cityId: action.toCityId }
+                  : g,
+              ),
+              powerUpUsed: true,
+              timeouts: 0,
+            }
+          : user,
+      );
+
+      const swapped: GameState = { ...state, users, queues, categoryGuesses };
+
+      return passTurn(swapped, action.user.id, false, "log.swap", {
+        player: action.user.id,
+        from: fromCity.name,
+        to: toCity.name,
+      });
     }
 
     case "end_turn": {

@@ -85,7 +85,7 @@ Settings are locked while a round is being played.
 
 ### Optional mechanics
 
-Four more switches, **all off by default**. The base game never depends on any
+Seven more switches, **all off by default**. The base game never depends on any
 of them; turn one on when the table wants more to argue about.
 
 | Mechanic | What it does |
@@ -94,6 +94,9 @@ of them; turn one on when the table wants more to argue about.
 | **Cost of a miss** | −1, −2 or −3 for every card that lands on the wrong city. |
 | **2× card** | One per player, per game or per round. Doubles what a bet pays — and what it costs. |
 | **Steals** | Spend a turn naming what an opponent bet. |
+| **Doubts** | Spend a turn doubting an opponent's bet on a city — no card named. |
+| **Power-ups** | Once a round, spend a turn moving one of your placed chips to another city. |
+| **Runner-up consolation** | The first player to bet a category's runner-up city banks 1 point. |
 
 **Cancel matching bets** is the one that makes the headline mechanic matter.
 Without it the visible chips are atmosphere: seeing three players on Tromsø
@@ -111,9 +114,31 @@ the victim's card is gone rather than returned. Get it wrong and your own card
 burns, and the whole table now knows what that city is *not*. A 2× does not
 travel with a stolen bet — that was the other player's gamble.
 
+**Doubts** are the bluffer's read. A steal makes you name the card; a doubt does
+not. You pick a player and a city and assert that their bet there is a mistake.
+The server knows the answers (the clients do not), so it resolves the call
+without leaking anything: if every card the target laid on that city is wrong,
+you bank 2 points for the reveal; if any one of them is right, your own card
+burns. It is the lighter, noisier cousin of a steal — you never have to commit
+to a category, which makes it the move to make when three chips are piled on the
+obvious outlier and you suspect the pile is wrong.
+
+**Power-ups** give you a take-back. Once a round, instead of placing, you move
+one of your already-placed chips to another city. The chip is still face-down,
+so opponents see *that* you moved it, never *what* it was — a loud, public tell
+that says you changed your mind without saying about what. A swap re-enters the
+destination queue at the back, so moving late costs you placement priority: the
+trade for getting to watch everyone else bet first.
+
+**Runner-up consolation** pays 1 point to the earliest player who bet a
+category's runner-up city, so a near miss is not worth nothing. It gives the
+player who almost had it something to chase late in a round, and it makes the
+second-best read matter on sets where the outlier is obvious.
+
 Cards lost this way still count against your hand, so a round always ends: the
 reducer's fuzz tests play 300 games with every mechanic on and none of them
 runs long.
+
 
 ### The cards
 

@@ -98,9 +98,19 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
             answers,
             gameState.categories,
             gameState.settings,
+            gameState.runnerUps ?? {},
+            gameState.doubtBonus,
           )
         : null,
-    [answers, gameState.users, gameState.categoryGuesses, gameState.categories, gameState.settings],
+    [
+      answers,
+      gameState.users,
+      gameState.categoryGuesses,
+      gameState.categories,
+      gameState.settings,
+      gameState.runnerUps,
+      gameState.doubtBonus,
+    ],
   );
 
   const resultFor = useCallback(
@@ -576,12 +586,20 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
                   {revealDone &&
                     (() => {
                       const totals = outcome?.totals[user.id];
-                      if (!totals || (totals.earned === 0 && totals.penalty === 0)) {
+                      if (
+                        !totals ||
+                        (totals.earned === 0 && totals.penalty === 0 && totals.consolation === 0)
+                      ) {
                         return <span className="text-[11px] text-chart-600">+0</span>;
                       }
                       return (
                         <span className="flex items-center gap-1">
                           {totals.earned > 0 && <Badge tone="signal">+{totals.earned}</Badge>}
+                          {totals.consolation > 0 && (
+                            <span title={t("results.consolationTitle")}>
+                              <Badge tone="beacon">+{totals.consolation}</Badge>
+                            </span>
+                          )}
                           {totals.penalty > 0 && (
                             <span
                               className="rounded-full border border-alert-500/40 bg-alert-500/10 px-2 py-0.5 text-[11px] font-medium text-alert-500"

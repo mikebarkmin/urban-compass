@@ -75,6 +75,9 @@ const GameSettingsPanel = ({ gameState, isHost, dispatch }: GameSettingsProps) =
     settings.wrongGuessPenalty > 0,
     settings.doubleDown !== "off",
     settings.steals,
+    settings.doubts,
+    settings.powerUps,
+    settings.runnerUpConsolation,
   ].filter(Boolean).length;
 
   /** Toggling a card off is refused when it would leave too few in play. */
@@ -261,6 +264,53 @@ const GameSettingsPanel = ({ gameState, isHost, dispatch }: GameSettingsProps) =
           value={settings.steals}
           disabled={locked}
           onChange={(steals) => update({ steals })}
+          options={[
+            { value: false, label: t("settings.off") },
+            { value: true, label: t("settings.on") },
+          ]}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label={t("settings.doubts.label")}
+        hint={t(settings.doubts ? "settings.doubts.on" : "settings.doubts.off")}
+      >
+        <Segmented<boolean>
+          value={settings.doubts}
+          disabled={locked}
+          onChange={(doubts) => update({ doubts })}
+          options={[
+            { value: false, label: t("settings.off") },
+            { value: true, label: t("settings.on") },
+          ]}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label={t("settings.powerUps.label")}
+        hint={t(settings.powerUps ? "settings.powerUps.on" : "settings.powerUps.off")}
+      >
+        <Segmented<boolean>
+          value={settings.powerUps}
+          disabled={locked}
+          onChange={(powerUps) => update({ powerUps })}
+          options={[
+            { value: false, label: t("settings.off") },
+            { value: true, label: t("settings.on") },
+          ]}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label={t("settings.consolation.label")}
+        hint={t(
+          settings.runnerUpConsolation ? "settings.consolation.on" : "settings.consolation.off",
+        )}
+      >
+        <Segmented<boolean>
+          value={settings.runnerUpConsolation}
+          disabled={locked}
+          onChange={(runnerUpConsolation) => update({ runnerUpConsolation })}
           options={[
             { value: false, label: t("settings.off") },
             { value: true, label: t("settings.on") },

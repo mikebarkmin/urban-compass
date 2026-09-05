@@ -8,6 +8,7 @@ import {
 } from "../../game/logic";
 import { Category, categoryIcons, cityName } from "../../game/cities";
 import { useLocale } from "@/i18n";
+import { useSound } from "@/hooks/useSound";
 import { Avatar, Badge, Button, Panel, cx } from "./ui";
 import PlayerList from "./PlayerList";
 import ActivityLog from "./ActivityLog";
@@ -27,12 +28,23 @@ interface StealTarget {
   cityId: string;
 }
 
+/** One of the player's own chips they are about to move with a power-up. */
+interface SwapFrom {
+  category: Category;
+  cityId: string;
+}
+
 const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProps) => {
   const { locale, t } = useLocale();
+  const { play } = useSound();
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [doubling, setDoubling] = useState(false);
   const [stealing, setStealing] = useState(false);
   const [stealTarget, setStealTarget] = useState<StealTarget | null>(null);
+  const [doubting, setDoubting] = useState(false);
+  const [doubtTarget, setDoubtTarget] = useState<StealTarget | null>(null);
+  const [swapping, setSwapping] = useState(false);
+  const [swapFrom, setSwapFrom] = useState<SwapFrom | null>(null);
 
   const me = gameState.users.find((u) => u.id === username);
   const isMyTurn = gameState.currentTurnUserId === username;
@@ -45,9 +57,14 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
   const burned = me?.burned ?? 0;
 
   const canAct = isMyTurn && !iAmDone && cardsLeft > 0;
-  const canPlace = canAct && !stealing;
+  const canPlace = canAct && !stealing && !doubting && !swapping;
   const stealsOn = gameState.settings.steals;
+  const doubtsOn = gameState.settings.doubts;
+  const powerUpsOn = gameState.settings.powerUps;
   const canDouble = gameState.settings.doubleDown !== "off" && !!me?.doubleDownAvailable;
+  // A power-up is one use per round, and only worth offering once a chip is down.
+  const hasPlacedChip = (me?.placedGuesses ?? []).length > 0;
+  const canPowerUp = canAct && powerUpsOn && !me?.powerUpUsed && hasPlacedChip;
 
   // The rounds still owed grow if somebody joins mid-game, so the total is
   // recomputed rather than frozen when the game started.
@@ -59,6 +76,8 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
     setSelectedCategory(null);
     setDoubling(false);
     setStealTarget(null);
+    setDoubtTarget(null);
+    setSwapFrom(null);
   };
 
   const place = (cityId: string) => {
@@ -69,6 +88,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
       cityId,
       ...(doubling && canDouble ? { doubled: true } : {}),
     });
+    play("flip");
     reset();
   };
 
@@ -89,7 +109,44 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
     setStealTarget(null);
   };
 
+  const confirmDoubt = () => {
+    if (!doubtTarget) return;
+    dispatch({
+      type: "doubt",
+      targetUserId: doubtTarget.userId,
+      cityId: doubtTarget.cityId,
+    });
+    play("doubt");
+    setDoubting(false);
+    reset();
+  };
+
+  const leaveDoubtMode = () => {
+    setDoubting(false);
+    setDoubtTarget(null);
+  };
+
+  const performSwap = (toCityId: string) => {
+    if (!swapFrom || toCityId === swapFrom.cityId) return;
+    dispatch({
+      type: "swap_chip",
+      category: swapFrom.category,
+      fromCityId: swapFrom.cityId,
+      toCityId,
+    });
+    play("swap");
+    setSwapping(false);
+    reset();
+  };
+
+  const leaveSwapMode = () => {
+    setSwapping(false);
+    setSwapFrom(null);
+  };
+
   const stealCity = stealTarget && gameState.cities.find((c) => c.id === stealTarget.cityId);
+  const doubtCity = doubtTarget && gameState.cities.find((c) => c.id === doubtTarget.cityId);
+  const swapFromCity = swapFrom && gameState.cities.find((c) => c.id === swapFrom.cityId);
 
   const handSubtitle = () => {
     if (stealTarget && stealCity) {
@@ -98,7 +155,21 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
         city: cityName(stealCity, locale),
       });
     }
+    if (doubtTarget && doubtCity) {
+      return t("board.hand.sub.doubting", {
+        player: doubtTarget.userId,
+        city: cityName(doubtCity, locale),
+      });
+    }
+    if (swapFrom && swapFromCity) {
+      return t("board.hand.sub.swapPickCity", {
+        card: t(`card.${swapFrom.category}.short`),
+        from: cityName(swapFromCity, locale),
+      });
+    }
     if (stealing) return t("board.hand.sub.stealing");
+    if (doubting) return t("board.hand.sub.doubtPick");
+    if (swapping) return t("board.hand.sub.swapPickChip");
     if (!canPlace) {
       return cardsLeft === 0
         ? t("board.hand.sub.spent", { count: handSize })
@@ -128,7 +199,11 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                 {canAct
                   ? stealing
                     ? t("board.calling")
-                    : t("board.yourTurn")
+                    : doubting
+                      ? t("board.doubting")
+                      : swapping
+                        ? t("board.swapping")
+                        : t("board.yourTurn")
                   : iAmDone || cardsLeft === 0
                     ? t("board.outOfCards")
                     : t("board.playing", { player: activePlayer ?? "" })}
@@ -162,7 +237,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
               />
             )}
 
-            {canAct && stealsOn && (
+            {canAct && stealsOn && !doubting && !swapping && (
               <Button
                 variant={stealing ? "primary" : "secondary"}
                 size="sm"
@@ -181,7 +256,45 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
               </Button>
             )}
 
-            {canAct && !stealing && (
+            {canAct && doubtsOn && !stealing && !swapping && (
+              <Button
+                variant={doubting ? "primary" : "secondary"}
+                size="sm"
+                title={t("board.doubtTitle")}
+                onClick={() => {
+                  if (doubting) {
+                    leaveDoubtMode();
+                  } else {
+                    setDoubting(true);
+                    setSelectedCategory(null);
+                    setDoubling(false);
+                  }
+                }}
+              >
+                {doubting ? t("board.neverMind") : t("board.doubt")}
+              </Button>
+            )}
+
+            {canPowerUp && !stealing && !doubting && (
+              <Button
+                variant={swapping ? "primary" : "secondary"}
+                size="sm"
+                title={t("board.swapTitle")}
+                onClick={() => {
+                  if (swapping) {
+                    leaveSwapMode();
+                  } else {
+                    setSwapping(true);
+                    setSelectedCategory(null);
+                    setDoubling(false);
+                  }
+                }}
+              >
+                {swapping ? t("board.neverMind") : t("board.swap")}
+              </Button>
+            )}
+
+            {canAct && !stealing && !doubting && !swapping && (
               <Button
                 variant="secondary"
                 size="sm"
@@ -196,7 +309,15 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
 
         {/* Hand */}
         <Panel
-          title={stealTarget ? t("board.hand.naming") : t("board.hand.title")}
+          title={
+            stealTarget
+              ? t("board.hand.naming")
+              : doubtTarget
+                ? t("board.hand.doubting")
+                : swapping
+                  ? t("board.hand.swapping")
+                  : t("board.hand.title")
+          }
           subtitle={handSubtitle()}
         >
           <div className="flex flex-wrap gap-2">
@@ -205,41 +326,60 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
               const placedCity = gameState.cities.find((c) => c.id === placedOn);
               const wasDoubled = myGuesses[category]?.doubled;
               const isSelected = selectedCategory === category;
+              const swapPicked = swapFrom?.category === category;
 
               // While naming an opponent's bet, the hand becomes the guess
               // picker; cards already in front of you cannot be the answer.
               const naming = !!stealTarget;
-              const usable = naming ? !placedOn : canPlace && !placedOn;
+              // While swapping a chip, the placed cards become the picker: tap
+              // one to choose which of your chips to move.
+              const pickingSwap = swapping && !!placedOn;
+              const usable = naming
+                ? !placedOn
+                : pickingSwap
+                  ? true
+                  : canPlace && !placedOn;
 
               return (
                 <button
                   key={category}
                   type="button"
                   disabled={!usable}
-                  onClick={() =>
-                    naming ? callBet(category) : setSelectedCategory(isSelected ? null : category)
-                  }
+                  onClick={() => {
+                    if (naming) {
+                      callBet(category);
+                    } else if (pickingSwap) {
+                      setSwapFrom(swapPicked ? null : { category, cityId: placedOn! });
+                    } else {
+                      setSelectedCategory(isSelected ? null : category);
+                    }
+                  }}
                   className={cx(
                     "group relative w-[104px] rounded-xl border px-3 py-3 text-left transition-all",
-                    placedOn
-                      ? "border-signal-500/40 bg-signal-500/10"
-                      : isSelected
-                        ? "-translate-y-1 border-beacon-500 bg-beacon-500/15 shadow-lg shadow-beacon-500/20"
-                        : usable
-                          ? "border-chart-600 bg-chart-850 hover:-translate-y-0.5 hover:border-chart-400"
-                          : "border-chart-800 bg-chart-900",
+                    swapPicked
+                      ? "-translate-y-1 border-beacon-500 bg-beacon-500/15 shadow-lg shadow-beacon-500/20"
+                      : placedOn
+                        ? "border-signal-500/40 bg-signal-500/10"
+                        : isSelected
+                          ? "-translate-y-1 border-beacon-500 bg-beacon-500/15 shadow-lg shadow-beacon-500/20"
+                          : usable
+                            ? "border-chart-600 bg-chart-850 hover:-translate-y-0.5 hover:border-chart-400"
+                            : "border-chart-800 bg-chart-900",
                     !usable && !placedOn && "opacity-50",
                     naming && usable && "hover:border-alert-500 hover:bg-alert-500/10",
+                    pickingSwap && !swapPicked && "hover:border-beacon-500 hover:bg-beacon-500/10",
                   )}
                 >
                   <span
                     className={cx(
                       "font-display text-2xl leading-none",
-                      placedOn
-                        ? "text-signal-400"
-                        : isSelected
-                          ? "text-beacon-400"
-                          : "text-chart-400",
+                      swapPicked
+                        ? "text-beacon-400"
+                        : placedOn
+                          ? "text-signal-400"
+                          : isSelected
+                            ? "text-beacon-400"
+                            : "text-chart-400",
                     )}
                   >
                     {categoryIcons[category]}
@@ -318,12 +458,58 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
               </button>
             </div>
           )}
+
+          {doubtTarget && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-chart-400">
+              <Badge tone="beacon">
+                <Avatar
+                  name={doubtTarget.userId}
+                  seed={doubtTarget.userId + roomId}
+                  size={14}
+                />
+                {t("board.doubtOnCity", {
+                  player: doubtTarget.userId,
+                  city: doubtCity ? cityName(doubtCity, locale) : "",
+                })}
+              </Badge>
+              <button
+                type="button"
+                onClick={confirmDoubt}
+                className="rounded-full border border-alert-500 bg-alert-500/15 px-3 py-1 text-[11px] font-semibold text-alert-300 transition-colors hover:bg-alert-500/25"
+              >
+                {t("board.doubtConfirm")}
+              </button>
+              <button className="text-chart-500 underline hover:text-chart-300" onClick={reset}>
+                {t("board.cancel")}
+              </button>
+            </div>
+          )}
+
+          {swapFrom && swapFromCity && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-chart-400">
+              <Badge tone="beacon">
+                {categoryIcons[swapFrom.category]} {t(`card.${swapFrom.category}.short`)}
+              </Badge>
+              <span>{t("board.swapFrom", { city: cityName(swapFromCity, locale) })}</span>
+              <button className="text-chart-500 underline hover:text-chart-300" onClick={reset}>
+                {t("board.cancel")}
+              </button>
+            </div>
+          )}
         </Panel>
 
         {/* Cities */}
         <Panel
           title={t("board.title")}
-          subtitle={t(stealing ? "board.subSteal" : "board.sub")}
+          subtitle={t(
+            stealing
+              ? "board.subSteal"
+              : doubting
+                ? "board.subDoubt"
+                : swapping
+                  ? "board.subSwap"
+                  : "board.sub",
+          )}
         >
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {gameState.cities.map((city) => {
@@ -331,26 +517,34 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
               const myBets = (me?.placedGuesses ?? []).filter((g) => g.cityId === city.id);
               const targetable = canPlace && !!selectedCategory;
               const stealable = stealing && !stealTarget;
+              const doubtable = doubting && !doubtTarget;
+              const swapDestination = swapping && !!swapFrom && swapFrom.cityId !== city.id;
+              const isSwapSource = swapping && swapFrom?.cityId === city.id;
               const opponentChips = queue.filter((g) => g.userId !== username);
+              const active = targetable || swapDestination;
 
               return (
                 <div
                   key={city.id}
                   className={cx(
                     "rounded-xl border transition-all",
-                    targetable
-                      ? "border-chart-600 bg-chart-850 hover:-translate-y-0.5 hover:border-beacon-500"
-                      : "border-chart-800 bg-chart-900/70",
+                    isSwapSource
+                      ? "border-beacon-500 bg-beacon-500/10"
+                      : targetable
+                        ? "border-chart-600 bg-chart-850 hover:-translate-y-0.5 hover:border-beacon-500"
+                        : swapDestination
+                          ? "border-beacon-500/60 bg-chart-850 hover:-translate-y-0.5 hover:border-beacon-500"
+                          : "border-chart-800 bg-chart-900/70",
                     myBets.length > 0 && "border-signal-500/30",
                   )}
                 >
                   <button
                     type="button"
-                    disabled={!targetable}
-                    onClick={() => place(city.id)}
+                    disabled={!active}
+                    onClick={() => (swapDestination ? performSwap(city.id) : place(city.id))}
                     className={cx(
                       "w-full p-3 text-left",
-                      targetable ? "cursor-pointer" : "cursor-default",
+                      active ? "cursor-pointer" : "cursor-default",
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -398,22 +592,32 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                     )}
                   </button>
 
-                  {/* Steals live outside the placing button so the two never
-                      nest, and so a chip stays a plain avatar the rest of the time. */}
-                  {stealable && opponentChips.length > 0 && (
+                  {/* Steals and doubts both pick an opponent's chip; they live
+                      outside the placing button so the two never nest, and so a
+                      chip stays a plain avatar the rest of the time. */}
+                  {(stealable || doubtable) && opponentChips.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5 border-t border-chart-800 px-3 py-2">
                       <span className="text-[10px] tracking-wide text-chart-500 uppercase">
-                        {t("board.call")}
+                        {stealable ? t("board.call") : t("board.doubt")}
                       </span>
                       {opponentChips.map((guess, index) => (
                         <button
                           key={`${guess.userId}-${index}`}
                           type="button"
-                          title={t("board.callTitle", { player: guess.userId })}
-                          onClick={() =>
-                            setStealTarget({ userId: guess.userId, cityId: city.id })
+                          title={
+                            stealable
+                              ? t("board.callTitle", { player: guess.userId })
+                              : t("board.doubtTitleChip", { player: guess.userId })
                           }
-                          className="rounded-full ring-offset-2 ring-offset-chart-900 transition-all hover:ring-2 hover:ring-alert-500"
+                          onClick={() =>
+                            stealable
+                              ? setStealTarget({ userId: guess.userId, cityId: city.id })
+                              : setDoubtTarget({ userId: guess.userId, cityId: city.id })
+                          }
+                          className={cx(
+                            "rounded-full ring-offset-2 ring-offset-chart-900 transition-all hover:ring-2",
+                            stealable ? "hover:ring-alert-500" : "hover:ring-beacon-500",
+                          )}
                         >
                           <Avatar name={guess.userId} seed={guess.userId + roomId} size={20} />
                         </button>
