@@ -81,23 +81,25 @@ const Layout = ({ children, header }: LayoutProps) => {
       <div className="absolute -right-32 -bottom-40 h-96 w-96 rounded-full bg-signal-500/10 blur-[120px]" />
     </div>
 
-    <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
+    <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-4 sm:px-6 sm:py-6">
+      <header className="mb-4 flex items-center justify-between gap-2 sm:mb-6 sm:gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
           <span
-            className="grid h-9 w-9 place-items-center rounded-xl bg-beacon-500 font-display text-lg font-bold text-chart-950"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-beacon-500 font-display text-lg font-bold text-chart-950"
             aria-hidden
           >
             ⌖
           </span>
-          <div>
-            <div className="font-display text-base leading-tight font-bold tracking-tight">
+          <div className="min-w-0">
+            <div className="truncate font-display text-base leading-tight font-bold tracking-tight">
               {t("app.name")}
             </div>
-            <div className="text-[11px] text-chart-500">{t("app.tagline")}</div>
+            <div className="hidden truncate text-[11px] text-chart-500 sm:block">
+              {t("app.tagline")}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {header}
           <MuteToggle />
           <LanguageSwitch />

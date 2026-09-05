@@ -243,7 +243,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
       <Confetti trigger={confettiTrigger} count={50} duration={1200} />
 
-      <div className="space-y-4">
+      <div className="order-2 space-y-4 lg:order-1">
         {/* Banner area: reveal banner during intro/revealing, then the
             round-over or game-over panel once the reveal is done. */}
         {!revealDone ? (
@@ -554,7 +554,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="order-1 space-y-4 lg:order-2">
         <Panel title={t("results.standings")}>
           <ul className="space-y-1.5">
             {ranked.map((user, index) => {

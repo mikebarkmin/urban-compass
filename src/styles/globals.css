@@ -151,12 +151,16 @@
 @layer base {
   html {
     color-scheme: dark;
+    /* Prevent text size adjustment on orientation change on iOS. */
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     background-color: var(--color-chart-950);
     color: var(--color-chart-100);
     -webkit-font-smoothing: antialiased;
+    /* Prevent rubber-band scroll / overscale on mobile. */
+    overscroll-behavior-y: none;
   }
 
   /* Keep number inputs from sprouting spinners inside the compact controls. */

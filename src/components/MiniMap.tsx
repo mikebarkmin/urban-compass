@@ -3,7 +3,7 @@ import { City, PublicCity, Category, categoryIcons, cityName } from "../../game/
 import { useLocale } from "@/i18n";
 import { cx } from "./ui";
 
-type Plottable = Pick<City | PublicCity, "id" | "name" | "latitude" | "longitude"> & {
+type Plottable = Pick<City | PublicCity, "id" | "name" | "latitude" | "longitude" | "population"> & {
   nameDe?: string;
 };
 
@@ -85,6 +85,26 @@ const MiniMap = ({
       y: offsetY + (maxLat - city.latitude) * scale,
     }));
 
+    // Dot radius scales with population, area-proportional (r ∝ √pop) so a
+    // city of 4M reads about twice the radius of one of 1M rather than four
+    // thousand times. Falls back to a flat size when the set carries no
+    // population or every city shares one.
+    const pops = placed
+      .map((p) => p.population)
+      .filter((p): p is number => typeof p === "number" && p > 0);
+    const minPop = pops.length > 0 ? Math.min(...pops) : 0;
+    const maxPop = pops.length > 0 ? Math.max(...pops) : 0;
+    const R_MIN = 0.9;
+    const R_MAX = 3.8;
+    const span = Math.sqrt(maxPop) - Math.sqrt(minPop);
+    const radiusFor = (population: number | null | undefined): number => {
+      if (typeof population !== "number" || population <= 0 || span === 0) {
+        return (R_MIN + R_MAX) / 2;
+      }
+      const t = (Math.sqrt(population) - Math.sqrt(minPop)) / span;
+      return R_MIN + (R_MAX - R_MIN) * t;
+    };
+
     // Dense pools stack cities on top of each other, so labels are laid out
     // greedily: answers claim their box first, and any other name that would
     // collide with an already-placed one is dropped rather than overprinted.
@@ -111,7 +131,8 @@ const MiniMap = ({
     for (const city of answers) if (claim(city, 3.6)) labelled.add(city.id);
     for (const city of rest) if (claim(city, 3)) labelled.add(city.id);
 
-    return { points: placed, labelled };
+    const withRadius = placed.map((city) => ({ ...city, r: radiusFor(city.population) }));
+    return { points: withRadius, labelled };
   }, [cities, activeHighlights, locale]);
 
   if (!plotted) {
@@ -149,7 +170,7 @@ const MiniMap = ({
                 <circle
                   cx={city.x}
                   cy={city.y}
-                  r={4.2}
+                  r={city.r + 2.4}
                   className="fill-beacon-500/25 stroke-beacon-500/60"
                   strokeWidth={0.5}
                 />
@@ -157,13 +178,13 @@ const MiniMap = ({
               <circle
                 cx={city.x}
                 cy={city.y}
-                r={isAnswer ? 1.9 : 1.2}
+                r={city.r}
                 className={isAnswer ? "fill-beacon-400" : "fill-chart-400"}
               />
               {labels && plotted.labelled.has(city.id) && (
                 <text
                   x={city.x}
-                  y={city.y - 3}
+                  y={city.y - city.r - 1.5}
                   textAnchor="middle"
                   className={cx(
                     "font-display",
@@ -177,7 +198,7 @@ const MiniMap = ({
               {isAnswer && (
                 <text
                   x={city.x}
-                  y={city.y + 6.5}
+                  y={city.y + city.r + 4.5}
                   textAnchor="middle"
                   className="fill-beacon-500"
                   style={{ fontSize: 4 }}

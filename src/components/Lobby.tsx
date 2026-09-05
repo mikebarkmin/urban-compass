@@ -57,7 +57,7 @@ const Lobby = ({ gameState, username, roomId, dispatch }: LobbyProps) => {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-      <div className="space-y-4">
+      <div className="order-2 space-y-4 lg:order-1">
         <Panel
           title={t("lobby.citySet.title")}
           subtitle={
@@ -148,7 +148,7 @@ const Lobby = ({ gameState, username, roomId, dispatch }: LobbyProps) => {
         </Panel>
       </div>
 
-      <div className="space-y-4">
+      <div className="order-1 space-y-4 lg:order-2">
         <Panel
           title={t("lobby.players", { count: gameState.users.length })}
           subtitle={
