@@ -10,7 +10,10 @@ import {
 import { Category, categoryIcons, cityName } from "../../game/cities";
 import { useLocale } from "@/i18n";
 import { useSound } from "@/hooks/useSound";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import { Avatar, Panel, cx } from "./ui";
+import { useFixedTopBar } from "./Layout";
+import ActionFlash from "./ActionFlash";
 import PlayerList from "./PlayerList";
 import ActivityLog from "./ActivityLog";
 import TurnClock from "./TurnClock";
@@ -37,6 +40,33 @@ interface SwapFrom {
 
 /** The action the player has chosen for this turn. Must be picked first. */
 type ActionMode = "place" | "steal" | "doubt" | "swap" | "sit_out";
+
+/**
+ * The two fixed bars are the top and bottom edge of one turn frame, so they
+ * are cut from one material: an amber slab while the player is on the clock,
+ * dark chrome otherwise, a hairline of the same ink on the board-facing edge,
+ * and no drop shadow on either. Anything that only one of them carries — a
+ * heavy shadow, a different border — makes them read as two unrelated
+ * components stuck to opposite ends of the screen.
+ */
+const barSurface = (accent: boolean) =>
+  cx(
+    "fixed inset-x-0 backdrop-blur",
+    accent ? "border-chart-950/15 bg-beacon-500" : "border-chart-700 bg-chart-950/95",
+  );
+
+/** The row inside a bar. Identical rhythm top and bottom. */
+const BAR_ROW = "mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3";
+
+/**
+ * Controls sitting on the amber slab. Dark ink on amber is the whole
+ * vocabulary: solid for the one commit action, outlined for everything else.
+ */
+// `tap-target` only fires on a coarse pointer, so the padding here has to
+// stand on its own for mouse users.
+const ACCENT_PILL = "tap-target inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition-colors";
+const ACCENT_PILL_SOLID = "border border-chart-950 bg-chart-950 text-beacon-400 hover:bg-chart-900";
+const ACCENT_PILL_OUTLINE = "border border-chart-950/30 text-chart-900 hover:bg-chart-950/10";
 
 /**
  * A small circled-i info icon that shows a popover on tap or click. Native
@@ -90,6 +120,9 @@ const InfoIcon = ({ label }: { label: string }) => {
 
 const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProps) => {
   const { locale, t } = useLocale();
+  useFixedTopBar();
+  // The board is only mounted while a game is in progress.
+  useWakeLock(true);
   const { play } = useSound();
   const [actionMode, setActionMode] = useState<ActionMode | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -149,6 +182,16 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
     setPendingStealCategory(null);
     setPendingSwapTo(null);
   };
+
+  // A staged action dies with the turn: the clock can run out, or the server
+  // can move on, while a selection is half-made. Clearing it also stops the
+  // amber bottom bar from hanging on under a top bar that has gone dark —
+  // two ends of the turn frame disagreeing about whose turn it is.
+  useEffect(() => {
+    if (!canAct) reset();
+    // `reset` is rebuilt every render; the turn flipping is the only trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canAct]);
 
   // --- Place ---
   const stageCity = (cityId: string) => {
@@ -287,16 +330,16 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
 
   return (
     <>
+      {/* Verdict flash for calls and doubts, shown to the whole table. */}
+      <ActionFlash log={gameState.log} />
+
       {/* Turn banner — fixed at the top. Shows round state and whose turn it is.
           The action buttons live in the action box below, not here. */}
       <div
-        className={cx(
-          "fixed inset-x-0 top-0 z-40 border-b backdrop-blur",
-          canAct ? "border-beacon-500/30 bg-beacon-500" : "border-chart-700 bg-chart-950/95",
-        )}
+        className={cx(barSurface(canAct), "top-0 z-40 border-b")}
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
+        <div className={BAR_ROW}>
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             {activePlayer && (
               <Avatar name={activePlayer} seed={activePlayer + roomId} avatar={avatarOf(activePlayer)} ring="active" size={32} />
@@ -344,13 +387,14 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
               totalSeconds={effectiveTurnSeconds(gameState.settings)}
               clockOffset={clockOffset}
               mine={isMyTurn}
+              onAccent={canAct}
             />
           )}
         </div>
       </div>
 
-      <div className="grid gap-4 pb-32 pt-[4.5rem] lg:grid-cols-[1fr_320px] lg:pb-28 lg:pt-20">
-        <div className="order-2 space-y-4 lg:order-1">
+      <div className="grid gap-4 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:grid-cols-[1fr_320px] lg:pb-[calc(7rem+env(safe-area-inset-bottom))]">
+        <div className="space-y-4">
           {/* Action box — the player picks what to do this turn before touching
               the board. Each button has an info icon explaining the action. */}
           <Panel title={t("board.action.title")} subtitle={t("board.action.subtitle")}>
@@ -365,7 +409,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                     onClick={() => selectMode(mode)}
                     aria-label={label}
                     className={cx(
-                      "inline-flex items-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all sm:px-5 sm:py-3",
+                      "tap-target inline-flex items-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all sm:px-5 sm:py-3",
                       active
                         ? "-translate-y-0.5 border-beacon-500 bg-beacon-500/15 text-beacon-200 shadow-lg shadow-beacon-500/20"
                         : available
@@ -403,7 +447,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                       : t("board.hand.title")
             }
           >
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
               {gameState.categories.map((category) => {
                 const placedOn = myGuesses[category]?.cityId;
                 const placedCity = gameState.cities.find((c) => c.id === placedOn);
@@ -432,7 +476,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                       }
                     }}
                     className={cx(
-                      "group relative w-[88px] rounded-xl border px-3 py-4 text-left transition-all sm:w-[104px] sm:py-3",
+                      "group relative rounded-xl border px-3 py-4 text-left transition-all sm:w-[104px] sm:py-3",
                       swapPicked
                         ? "-translate-y-1 border-beacon-500 bg-beacon-500/15 shadow-lg shadow-beacon-500/20"
                         : isSelected
@@ -493,7 +537,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                     : "board.sub",
             )}
           >
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
               {gameState.cities.map((city) => {
                 const queue = gameState.queues[city.id] ?? [];
                 const myBets = (me?.placedGuesses ?? []).filter((g) => g.cityId === city.id);
@@ -535,7 +579,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                             : undefined
                       }
                       className={cx(
-                        "w-full p-3.5 text-left sm:p-3",
+                        "w-full p-2.5 text-left sm:p-3",
                         active ? "cursor-pointer" : "cursor-default",
                       )}
                     >
@@ -615,7 +659,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                                 : setDoubtTarget({ userId: guess.userId, cityId: city.id })
                             }
                             className={cx(
-                              "grid place-items-center rounded-full p-1 ring-offset-2 ring-offset-chart-900 transition-all hover:ring-2 sm:p-0.5",
+                              "tap-target grid place-items-center rounded-full p-1 ring-offset-2 ring-offset-chart-900 transition-all hover:ring-2 sm:p-0.5",
                               stealable ? "hover:ring-alert-500" : "hover:ring-beacon-500",
                             )}
                           >
@@ -631,7 +675,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
           </Panel>
         </div>
 
-        <div className="order-1 space-y-4 lg:order-2">
+        <div className="space-y-4">
           <Panel title={t("players.title")}>
             <PlayerList gameState={gameState} username={username} roomId={roomId} showProgress />
           </Panel>
@@ -643,10 +687,10 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
           button. Every action flows through here once its selection is staged. */}
       {actionMode && (
         <div
-          className="fixed inset-x-0 bottom-0 z-50 border-t border-beacon-500/30 bg-beacon-500 shadow-2xl shadow-black/40 backdrop-blur"
+          className={cx(barSurface(true), "bottom-0 z-50 border-t")}
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
+          <div className={cx(BAR_ROW, "flex-wrap")}>
             <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-2.5">
               {/* Current selection badges */}
               {actionMode === "place" && selectedCategory && (
@@ -701,21 +745,13 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                       ? "board.doubleTitleRisk"
                       : "board.doubleTitle",
                   )}
-                  className={cx(
-                    "rounded-full border px-4 py-2 text-sm font-semibold transition-colors sm:px-3 sm:py-1.5",
-                    doubling
-                      ? "border-chart-950 bg-chart-950 text-beacon-400"
-                      : "border-chart-950/30 text-chart-900 hover:bg-chart-950/10",
-                  )}
+                  className={cx(ACCENT_PILL, doubling ? ACCENT_PILL_SOLID : ACCENT_PILL_OUTLINE)}
                 >
                   2× {doubling ? t("board.doubleOn") : t("board.doubleDown")}
                 </button>
               )}
 
-              <button
-                className="text-sm text-chart-800 underline underline-offset-4 hover:text-chart-950"
-                onClick={reset}
-              >
+              <button type="button" className={cx(ACCENT_PILL, ACCENT_PILL_OUTLINE)} onClick={reset}>
                 {t("board.cancel")}
               </button>
 
@@ -724,9 +760,10 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                 disabled={!canConfirm}
                 onClick={doConfirm}
                 className={cx(
-                  "rounded-full px-5 py-2.5 text-sm font-bold transition-all sm:py-2",
+                  ACCENT_PILL,
+                  "font-bold",
                   canConfirm
-                    ? "border border-chart-950 bg-chart-950 text-beacon-400 shadow-lg shadow-black/30 hover:bg-chart-900"
+                    ? ACCENT_PILL_SOLID
                     : "cursor-not-allowed border border-chart-950/20 bg-chart-950/10 text-chart-700",
                 )}
               >

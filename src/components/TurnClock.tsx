@@ -10,6 +10,12 @@ interface TurnClockProps {
   clockOffset: RefObject<number>;
   /** Draw the clock as the player's own, which is worth being loud about. */
   mine?: boolean;
+  /**
+   * The clock is sitting on the amber turn bar rather than the dark one, so
+   * it has to switch to dark ink. Without this it keeps its chart-grey
+   * numerals and reads as a control borrowed from another screen.
+   */
+  onAccent?: boolean;
 }
 
 /**
@@ -17,7 +23,7 @@ interface TurnClockProps {
  * the server owns the deadline and is what actually passes the turn, so a
  * paused tab or a slow frame here cannot cost anybody their card.
  */
-const TurnClock = ({ endsAt, totalSeconds, clockOffset, mine }: TurnClockProps) => {
+const TurnClock = ({ endsAt, totalSeconds, clockOffset, mine, onAccent }: TurnClockProps) => {
   const [remaining, setRemaining] = useState(0);
 
   useEffect(() => {
@@ -33,11 +39,24 @@ const TurnClock = ({ endsAt, totalSeconds, clockOffset, mine }: TurnClockProps) 
 
   return (
     <div className="flex items-center gap-2" aria-live="off">
-      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-chart-800">
+      <div
+        className={cx(
+          "h-1.5 w-20 overflow-hidden rounded-full",
+          onAccent ? "bg-chart-950/20" : "bg-chart-800",
+        )}
+      >
         <div
           className={cx(
             "h-full rounded-full transition-[width] duration-200 ease-linear",
-            urgent ? "bg-alert-500" : mine ? "bg-beacon-500" : "bg-chart-500",
+            onAccent
+              ? urgent
+                ? "bg-alert-500"
+                : "bg-chart-950"
+              : urgent
+                ? "bg-alert-500"
+                : mine
+                  ? "bg-beacon-500"
+                  : "bg-chart-500",
           )}
           style={{ width: `${fraction * 100}%` }}
         />
@@ -45,7 +64,14 @@ const TurnClock = ({ endsAt, totalSeconds, clockOffset, mine }: TurnClockProps) 
       <span
         className={cx(
           "w-7 text-right font-display text-sm font-bold tabular-nums",
-          urgent ? "animate-pulse text-alert-500" : "text-chart-300",
+          urgent && "animate-pulse",
+          onAccent
+            ? urgent
+              ? "text-alert-500"
+              : "text-chart-950"
+            : urgent
+              ? "text-alert-500"
+              : "text-chart-300",
         )}
       >
         {seconds}

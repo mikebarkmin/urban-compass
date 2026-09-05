@@ -12,6 +12,20 @@ export type SoundCue =
   | "doubt"
   | "swap";
 
+/**
+ * Vibration patterns per cue, in milliseconds (on/off/on...). Deliberately
+ * short — a game move should feel like a click, not an alarm. Cues with no
+ * entry stay silent to the hand.
+ */
+const HAPTICS: Partial<Record<SoundCue, number | number[]>> = {
+  flip: 12,
+  swap: [8, 40, 8],
+  doubt: [18, 40, 18],
+  chime: 10,
+  buzz: [20, 30, 20],
+  fanfare: [12, 60, 12, 60, 24],
+};
+
 interface SoundApi {
   /** Play a synthesised cue. No-op when muted or when motion is reduced. */
   play: (cue: SoundCue) => void;
@@ -69,8 +83,6 @@ export const SoundProvider = ({ children }: { children: ReactNode }) => {
   const play = useCallback(
     (cue: SoundCue) => {
       if (muted) return;
-      const ctx = ensureContext();
-      if (!ctx) return;
 
       // Respect reduced-motion for non-essential cues: keep chimes, skip the
       // drumroll and fanfare flourishes.
@@ -78,6 +90,21 @@ export const SoundProvider = ({ children }: { children: ReactNode }) => {
         typeof window !== "undefined" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (reduced && (cue === "drumroll" || cue === "fanfare")) return;
+
+      // On a phone the buzz is half the feedback, and it lands even when the
+      // device is on silent or the audio context never came up. The mute
+      // toggle covers it too: it is the one "make the game quiet" control.
+      const pattern = HAPTICS[cue];
+      if (pattern && typeof navigator !== "undefined" && "vibrate" in navigator) {
+        try {
+          navigator.vibrate(pattern);
+        } catch {
+          // Some browsers expose `vibrate` but reject it outside a gesture.
+        }
+      }
+
+      const ctx = ensureContext();
+      if (!ctx) return;
 
       const now = ctx.currentTime;
 

@@ -36,14 +36,39 @@ let cached: Promise<City[]> | null = null;
  * downloaded only once per session. Resolves with an empty array if the fetch
  * fails — the builder shows an error rather than crashing.
  */
-export const loadCities = (): Promise<City[]> => {
+export const loadCities = (onProgress?: (megabytesRead: number) => void): Promise<City[]> => {
   if (cached) return cached;
 
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   cached = fetch(`${base}/cities5000.json`)
-    .then((response) => {
+    .then(async (response) => {
       if (!response.ok) throw new Error(`cities5000: ${response.status}`);
-      return response.json() as Promise<CompactCity[]>;
+      if (!onProgress || !response.body) return response.json() as Promise<CompactCity[]>;
+
+      // Roughly 1.6 MB over the wire and 4.2 MB decoded — on a phone
+      // connection that is long enough to look like a hang, so read the body
+      // in chunks and report how far it has got. `content-length` counts
+      // compressed bytes while the stream yields decoded ones, so the two
+      // cannot be turned into a percentage; the running total is the honest
+      // number to show.
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = [];
+      let read = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        read += value.length;
+        onProgress(read / 1_048_576);
+      }
+
+      const merged = new Uint8Array(read);
+      let offset = 0;
+      for (const chunk of chunks) {
+        merged.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return JSON.parse(new TextDecoder().decode(merged)) as CompactCity[];
     })
     .then((rows) => rows.map(toCity))
     .catch((error) => {

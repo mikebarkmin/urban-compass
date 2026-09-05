@@ -70,7 +70,7 @@ const Game = ({ username, roomId, onLeave }: GameProps) => {
 
         <button
           onClick={onLeave}
-          className="text-xs text-chart-500 underline underline-offset-4 transition-colors hover:text-chart-200"
+          className="tap-target inline-flex items-center text-xs text-chart-500 underline underline-offset-4 transition-colors hover:text-chart-200"
         >
           {t("game.leave")}
         </button>

@@ -174,7 +174,7 @@ const GameSettingsPanel = ({ gameState, isHost, dispatch }: GameSettingsProps) =
                 title={!available ? t("settings.cards2.someUnavailable") : undefined}
                 onClick={() => toggleCategory(category)}
                 className={cx(
-                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  "tap-target inline-flex items-center justify-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
                   active
                     ? "border-beacon-500/60 bg-beacon-500/15 text-beacon-200"
                     : "border-chart-700 bg-chart-900 text-chart-500",

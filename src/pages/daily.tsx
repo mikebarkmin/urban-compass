@@ -12,7 +12,6 @@ export default function DailyPage() {
       <Head>
         <title>{`${t("app.name")} · ${t("daily.title", { number: "" }).replace("#", "").trim()}`}</title>
         <meta name="description" content={t("home.daily.sub")} />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
       <Layout>

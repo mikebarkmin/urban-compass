@@ -25,8 +25,11 @@ import {
   scorePicks,
   shareText,
 } from "@/utils/daily";
+import { shareOrCopy } from "@/utils";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import { useLocale } from "@/i18n";
 import { Badge, Button, Panel, cx } from "./ui";
+import { useFixedTopBar } from "./Layout";
 import MiniMap from "./MiniMap";
 
 const MARK_STYLE = {
@@ -77,6 +80,8 @@ const formatDuration = (ms: number): string => {
  */
 const Daily = () => {
   const { locale, t } = useLocale();
+  useFixedTopBar();
+
   // Everything below depends on the date and on localStorage, so the first
   // render is deliberately empty — it keeps the server and client markup in step.
   const [today, setToday] = useState<string | null>(null);
@@ -84,6 +89,9 @@ const Daily = () => {
   const [picks, setPicks] = useState<Picks>({});
   const [selected, setSelected] = useState<Category | null>(null);
   const [revealed, setRevealed] = useState(false);
+  // Only while the puzzle is still in play; once it is revealed there is
+  // nothing left to lose to a screen timeout.
+  useWakeLock(!revealed);
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
@@ -149,11 +157,14 @@ const Daily = () => {
       typeof window === "undefined"
         ? undefined
         : `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}`;
-    try {
-      await navigator.clipboard.writeText(shareText(puzzle, picks, origin));
+    // The squares carry the link already, so this goes out as one block of
+    // text rather than a separate `url` a share target might render twice.
+    const outcome = await shareOrCopy({ text: shareText(puzzle, picks, origin) });
+    // Only a clipboard write needs telling; the share sheet is its own receipt.
+    if (outcome === "copied") {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } else {
       setCopied(false);
     }
   };
@@ -197,7 +208,7 @@ const Daily = () => {
               href="/"
               aria-label={t("daily.backToRooms")}
               className={cx(
-                "grid h-8 w-8 shrink-0 place-items-center rounded-lg border text-sm transition-colors",
+                "tap-target grid h-8 w-8 shrink-0 place-items-center rounded-lg border text-sm transition-colors",
                 selected && !revealed
                   ? "border-chart-950/20 text-chart-950 hover:bg-chart-950/10"
                   : "border-chart-700 text-chart-400 hover:bg-chart-800 hover:text-chart-200",
@@ -262,7 +273,7 @@ const Daily = () => {
         </div>
       </div>
 
-    <div className="grid gap-4 pb-32 pt-[4.5rem] lg:grid-cols-[1fr_320px] lg:pb-28 lg:pt-20">
+    <div className="grid gap-4 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:grid-cols-[1fr_320px] lg:pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <div className="space-y-4">
 
         <Panel
@@ -275,7 +286,7 @@ const Daily = () => {
                 : t("daily.hand.place", { count: DAILY_CATEGORIES.length })
           }
         >
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
             {DAILY_CATEGORIES.map((category) => {
               const cityId = picks[category];
               const city = puzzle.cities.find((c) => c.id === cityId);
@@ -289,7 +300,7 @@ const Daily = () => {
                   disabled={revealed}
                   onClick={() => setSelected(isSelected ? null : category)}
                   className={cx(
-                    "w-[104px] rounded-xl border px-3 py-3 text-left transition-all",
+                    "rounded-xl border px-3 py-3 text-left transition-all sm:w-[104px]",
                     mark
                       ? MARK_STYLE[mark]
                       : isSelected
@@ -334,7 +345,7 @@ const Daily = () => {
             </div>
           )}
 
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
             {puzzle.cities.map((city) => {
               const here = DAILY_CATEGORIES.filter((category) => picks[category] === city.id);
               const targetable = !revealed && !!selected;

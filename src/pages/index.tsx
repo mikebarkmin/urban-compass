@@ -72,7 +72,6 @@ export default function Home() {
       <Head>
         <title>{t("app.name")}</title>
         <meta name="description" content={t("home.daily.sub")} />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
       <Layout>
@@ -137,6 +136,7 @@ export default function Home() {
                     value={username}
                     maxLength={24}
                     autoComplete="off"
+                    enterKeyHint="next"
                     placeholder={t("home.field.namePlaceholder")}
                     onChange={(event) => setUsername(event.target.value)}
                   />
@@ -152,6 +152,12 @@ export default function Home() {
                       value={roomId}
                       maxLength={12}
                       autoComplete="off"
+                      // The field is upper-cased on change anyway; telling the
+                      // phone keyboard up front saves a shift-key dance.
+                      autoCapitalize="characters"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      enterKeyHint="go"
                       placeholder={t("home.field.roomPlaceholder")}
                       onChange={(event) => setRoomId(event.target.value.toUpperCase())}
                     />

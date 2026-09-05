@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { City, PublicCity, Category, categoryIcons, cityName } from "../../game/cities";
 import { useLocale } from "@/i18n";
 import { cx } from "./ui";
@@ -37,6 +37,30 @@ const MiniMap = ({
   height = 260,
 }: MiniMapProps) => {
   const { locale, t } = useLocale();
+
+  // The viewBox is a fixed 128 units wide, so a font size given in those units
+  // renders smaller the narrower the map gets — on a phone the labels came out
+  // around 9px. Measure the box and solve for the unit size that lands on a
+  // legible pixel size instead. Bigger labels collide more, and the greedy
+  // layout below drops the losers: a few readable names beat a dozen unreadable
+  // ones.
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [widthPx, setWidthPx] = useState(0);
+
+  useEffect(() => {
+    const node = boxRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      setWidthPx(entry.contentRect.width);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  // Fall back to the old sizes until the first measurement lands.
+  const unitsPerPx = widthPx > 0 ? 128 / widthPx : 0;
+  const answerFont = unitsPerPx > 0 ? Math.max(3.6, 12 * unitsPerPx) : 3.6;
+  const restFont = unitsPerPx > 0 ? Math.max(3, 10 * unitsPerPx) : 3;
 
   // Filter highlights to only the categories that have been revealed so far.
   // When `revealedCategories` is undefined, all highlights pass through.
@@ -128,12 +152,12 @@ const MiniMap = ({
     const answers = placed.filter((city) => (activeHighlights[city.id] ?? []).length > 0);
     const rest = placed.filter((city) => (activeHighlights[city.id] ?? []).length === 0);
     const labelled = new Set<string>();
-    for (const city of answers) if (claim(city, 3.6)) labelled.add(city.id);
-    for (const city of rest) if (claim(city, 3)) labelled.add(city.id);
+    for (const city of answers) if (claim(city, answerFont)) labelled.add(city.id);
+    for (const city of rest) if (claim(city, restFont)) labelled.add(city.id);
 
     const withRadius = placed.map((city) => ({ ...city, r: radiusFor(city.population) }));
     return { points: withRadius, labelled };
-  }, [cities, activeHighlights, locale]);
+  }, [cities, activeHighlights, locale, answerFont, restFont]);
 
   if (!plotted) {
     return (
@@ -151,6 +175,7 @@ const MiniMap = ({
 
   return (
     <div
+      ref={boxRef}
       className={cx(
         "relative overflow-hidden rounded-xl border border-chart-700 bg-chart-950/60",
         className,
@@ -190,7 +215,7 @@ const MiniMap = ({
                     "font-display",
                     isAnswer ? "fill-beacon-300" : "fill-chart-300",
                   )}
-                  style={{ fontSize: isAnswer ? 3.6 : 3 }}
+                  style={{ fontSize: isAnswer ? answerFont : restFont }}
                 >
                   {cityName(city, locale)}
                 </text>
@@ -198,10 +223,10 @@ const MiniMap = ({
               {isAnswer && (
                 <text
                   x={city.x}
-                  y={city.y + city.r + 4.5}
+                  y={city.y + city.r + Math.max(4.5, answerFont * 1.25)}
                   textAnchor="middle"
                   className="fill-beacon-500"
-                  style={{ fontSize: 4 }}
+                  style={{ fontSize: Math.max(4, answerFont * 1.1) }}
                 >
                   {categories.map((category) => categoryIcons[category]).join(" ")}
                 </text>

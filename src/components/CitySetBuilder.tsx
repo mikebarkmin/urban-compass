@@ -60,6 +60,8 @@ const CitySetBuilder = ({
 
   const [cities, setCities] = useState<City[] | null>(null);
   const [loading, setLoading] = useState(false);
+  // Megabytes pulled so far, so a slow connection does not look like a hang.
+  const [loadedMb, setLoadedMb] = useState(0);
   const [loadError, setLoadError] = useState(false);
 
   const [latMin, setLatMin] = useState(-90);
@@ -93,7 +95,7 @@ const CitySetBuilder = ({
       if (!cities && !loading) {
         setLoading(true);
         setLoadError(false);
-        void loadCities().then((loaded) => {
+        void loadCities(setLoadedMb).then((loaded) => {
           setCities(loaded);
           if (loaded.length === 0) setLoadError(true);
           else {
@@ -112,6 +114,12 @@ const CitySetBuilder = ({
 
   const isEditing = editCities !== null;
 
+  // The existing "loading" string plus a running byte count — no new
+  // translation needed, and it is the same wording in both languages.
+  const loadingLabel = loadedMb > 0.05
+    ? `${t("builder.loading")} ${loadedMb.toFixed(1)} MB`
+    : t("builder.loading");
+
   const ensureLoaded = () => {
     if (loading) return;
     if (cities) {
@@ -121,7 +129,7 @@ const CitySetBuilder = ({
     setOpen(true);
     setLoading(true);
     setLoadError(false);
-    void loadCities().then((loaded) => {
+    void loadCities(setLoadedMb).then((loaded) => {
       setCities(loaded);
       if (loaded.length === 0) {
         setLoadError(true);
@@ -296,7 +304,7 @@ const CitySetBuilder = ({
             disabled={locked}
             onClick={open ? () => setOpen(false) : ensureLoaded}
           >
-            {loading ? t("builder.loading") : t("builder.toggle")}
+            {loading ? loadingLabel : t("builder.toggle")}
           </Button>
         )}
       </div>
@@ -331,7 +339,7 @@ const CitySetBuilder = ({
                   type="text"
                   value={search}
                   disabled={locked}
-                  placeholder={loading ? t("builder.loading") : t("editor.search")}
+                  placeholder={loading ? loadingLabel : t("editor.search")}
                   onChange={(event) => setSearch(event.target.value)}
                   className={cx(inputClass, "py-1.5 text-xs")}
                 />
@@ -447,7 +455,7 @@ const CitySetBuilder = ({
           ) : (
             <>
               {loading && (
-                <p className="text-xs text-chart-400">{t("builder.loading")}</p>
+                <p className="text-xs text-chart-400">{loadingLabel}</p>
               )}
 
               {cities && !loading && (

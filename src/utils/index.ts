@@ -26,3 +26,38 @@ export const randomRoomCode = () => {
   }
   return code;
 };
+
+/** What `shareOrCopy` managed to do, so a caller can label its button. */
+export type ShareOutcome = "shared" | "copied" | "failed";
+
+/**
+ * Hand something to the OS share sheet where there is one, and fall back to
+ * the clipboard everywhere else. On a phone the share sheet is how a daily
+ * result or a room invite actually reaches a chat app; on a desktop browser
+ * `navigator.share` is usually absent, and the clipboard is the right answer.
+ *
+ * Dismissing the sheet counts as shared: the user made a choice, and dropping
+ * the text into their clipboard behind their back is not a helpful fallback.
+ */
+export const shareOrCopy = async (data: ShareData): Promise<ShareOutcome> => {
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    if (!navigator.canShare || navigator.canShare(data)) {
+      try {
+        await navigator.share(data);
+        return "shared";
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return "shared";
+        // Anything else (a permission policy, a missing handler) falls through
+        // to the clipboard below.
+      }
+    }
+  }
+
+  const text = [data.text, data.url].filter(Boolean).join("\n");
+  try {
+    await navigator.clipboard.writeText(text);
+    return "copied";
+  } catch {
+    return "failed";
+  }
+};

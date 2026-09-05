@@ -6,6 +6,7 @@ import {
   handSizeFor,
 } from "../../game/logic";
 import { City, SCORING_VALUES, categoryIcons } from "../../game/cities";
+import { shareOrCopy } from "@/utils";
 import { Rich, useT } from "@/i18n";
 import { Badge, Button, Panel, cx } from "./ui";
 import { Emoji } from "./Emoji";
@@ -52,11 +53,12 @@ const Lobby = ({ gameState, username, roomId, dispatch }: LobbyProps) => {
     const url = new URL(window.location.href);
     url.searchParams.set("roomId", roomId);
     url.searchParams.delete("username");
-    try {
-      await navigator.clipboard.writeText(url.toString());
+    const outcome = await shareOrCopy({ title: "Urban Compass", url: url.toString() });
+    // Only a clipboard write needs telling; the share sheet is its own receipt.
+    if (outcome === "copied") {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } else {
       setCopied(false);
     }
   };

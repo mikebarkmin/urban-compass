@@ -511,6 +511,13 @@ export const en = {
   "log.timedOut": "{player} ran out of time. {next} is up.",
   "log.timedOutRetired": "{player} ran out of time again and is out of the round. {next} is up.",
   "log.paused": "{player}'s clock ran out — granted a pause and the turn clock resets.",
+  // The verdict flash shown to the whole table when a call or a doubt
+  // resolves. Short enough to read at a glance while it is on screen.
+  "flash.stealHit": "Read exactly!",
+  "flash.stealMissed": "Wrong card",
+  "flash.doubtHit": "Doubt lands!",
+  "flash.doubtMissed": "Doubt sinks",
+  "flash.body": "{player} → {target} · {city}",
   "log.stealMissed":
     "{player} called {target}'s bet on {city} as {category} — wrong, and the card is gone. {next} is up.",
   "log.stealHit": "{player} read {target} exactly — {category} on {city} is theirs now. {next} is up.",
@@ -1031,6 +1038,11 @@ export const de: Record<MessageKey, string> = {
   "log.timedOut": "{player} ist die Zeit ausgegangen. {next} ist dran.",
   "log.timedOutRetired": "{player} ist erneut die Zeit ausgegangen und ist raus aus der Runde. {next} ist dran.",
   "log.paused": "{player}s Zeit ist abgelaufen — eine Pause wurde gewährt, die Uhr startet neu.",
+  "flash.stealHit": "Genau gelesen!",
+  "flash.stealMissed": "Karte daneben",
+  "flash.doubtHit": "Zweifel bestätigt!",
+  "flash.doubtMissed": "Zweifel widerlegt",
+  "flash.body": "{player} → {target} · {city}",
   "log.stealMissed":
     "{player} hat {target}s Tipp auf {city} als {category} benannt — falsch, die Karte ist weg. {next} ist dran.",
   "log.stealHit": "{player} hat {target} genau gelesen — {category} auf {city} gehört jetzt ihnen. {next} ist dran.",

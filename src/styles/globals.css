@@ -37,6 +37,7 @@
   --animate-drumroll: drumroll 1.2s ease-in-out both;
   --animate-confetti-fade: confetti-fade 0.8s ease-out both;
   --animate-count-up: count-up 0.4s ease-out both;
+  --animate-verdict-shake: verdict-shake 0.45s ease-out both;
 
   @keyframes appear {
     from {
@@ -136,6 +137,27 @@
     }
   }
 
+  /* A miss wobbles. Applied to a wrapper so it composes with the `pop` on the
+     card itself rather than fighting it for the transform. */
+  @keyframes verdict-shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-7px);
+    }
+    40% {
+      transform: translateX(6px);
+    }
+    60% {
+      transform: translateX(-4px);
+    }
+    80% {
+      transform: translateX(2px);
+    }
+  }
+
   @keyframes count-up {
     from {
       transform: translateY(2px);
@@ -161,6 +183,17 @@
     -webkit-font-smoothing: antialiased;
     /* Prevent rubber-band scroll / overscale on mobile. */
     overscroll-behavior-y: none;
+  }
+
+  /* Tapping a card or chip is a game move, not a text selection: drop the
+     Android tap flash, the double-tap zoom delay, and the selection that
+     appears when the same control is tapped in quick succession. */
+  button,
+  [role="radio"] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   /* Keep number inputs from sprouting spinners inside the compact controls. */
@@ -197,6 +230,15 @@
     border: 1px solid color-mix(in oklab, var(--color-chart-600) 55%, transparent);
     border-radius: 1rem;
     backdrop-filter: blur(12px);
+  }
+
+  /* Controls a finger has to hit. Pointer-based input keeps the compact
+     sizing; touch gets the 44px minimum every platform guideline asks for. */
+  @media (pointer: coarse) {
+    .tap-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
 
   /* Scrollbars inside panels, so long lists do not break the dark surface. */

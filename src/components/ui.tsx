@@ -211,7 +211,7 @@ export const Segmented = <T extends string | number | boolean>({
           disabled={disabled}
           onClick={() => onChange(option.value)}
           className={cx(
-            "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+            "tap-target inline-flex items-center justify-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
             "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-beacon-500",
             selected
               ? "bg-beacon-500 text-chart-950"
