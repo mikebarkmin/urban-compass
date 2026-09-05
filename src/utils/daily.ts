@@ -38,6 +38,16 @@ export const dayKey = (now: Date = new Date()): string =>
 export const puzzleNumber = (key: string): number =>
   Math.round((Date.parse(`${key}T00:00:00Z`) - EPOCH) / DAY_MS) + 1;
 
+/** Milliseconds from `now` until the next UTC midnight. */
+export const msUntilNextDay = (now: Date = new Date()): number => {
+  const next = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+  );
+  return next - now.getTime();
+};
+
 export interface DailyPuzzle {
   key: string;
   number: number;

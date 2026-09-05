@@ -19,6 +19,7 @@ import {
   emptyStats,
   loadStats,
   markFor,
+  msUntilNextDay,
   recordResult,
   saveStats,
   scorePicks,
@@ -61,6 +62,15 @@ const Stat = ({ label, value }: { label: string; value: string | number }) => (
   </div>
 );
 
+/** Format a millisecond duration as H:MM:SS, clamped at 0 on the low end. */
+const formatDuration = (ms: number): string => {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
+};
+
 /**
  * The solo puzzle: one board a day, all six cards placed at once, then a single
  * reveal. No room, no host, nobody else to wait for.
@@ -75,6 +85,7 @@ const Daily = () => {
   const [selected, setSelected] = useState<Category | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
     const key = dayKey();
@@ -88,6 +99,15 @@ const Daily = () => {
       setRevealed(true);
     }
   }, []);
+
+  // Tick down to the next UTC midnight, but only once the puzzle is done —
+  // before that the countdown is noise. Updates each second.
+  useEffect(() => {
+    if (!revealed) return;
+    setTimeLeft(msUntilNextDay());
+    const id = window.setInterval(() => setTimeLeft(msUntilNextDay()), 1000);
+    return () => window.clearInterval(id);
+  }, [revealed]);
 
   const puzzle = useMemo(() => (today ? buildPuzzle(today) : null), [today]);
 
@@ -447,7 +467,14 @@ const Daily = () => {
 
           {revealed && (
             <p className="mt-4 border-t border-chart-800 pt-3 text-xs text-chart-500">
-              {t("daily.done")}
+              {t("daily.done")}{" "}
+              {timeLeft !== null && (
+                <span className="font-mono tabular-nums text-chart-300">
+                  {t("daily.nextIn", {
+                    time: formatDuration(timeLeft),
+                  })}
+                </span>
+              )}
             </p>
           )}
         </Panel>

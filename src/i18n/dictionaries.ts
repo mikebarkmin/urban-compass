@@ -347,7 +347,8 @@ export const en = {
   "daily.best": "Best",
   "daily.played": "Played",
   "daily.average": "Average",
-  "daily.done": "That is today’s board done. A new one is drawn at midnight UTC.",
+  "daily.done": "That is today’s board done.",
+  "daily.nextIn": "A new one is drawn in {time}.",
   "daily.multiplayer.title": "Rather play with people?",
   "daily.multiplayer.body":
     "The daily is the same puzzle for everybody, played alone. The multiplayer game deals a fresh board, hides what everyone bet, and pays out to whoever gets a category right first.",
@@ -866,7 +867,8 @@ export const de: Record<MessageKey, string> = {
   "daily.best": "Beste",
   "daily.played": "Gespielt",
   "daily.average": "Schnitt",
-  "daily.done": "Das heutige Feld ist durch. Um Mitternacht UTC wird ein neues gezogen.",
+  "daily.done": "Das heutige Feld ist durch.",
+  "daily.nextIn": "Ein neues erscheint in {time}.",
   "daily.multiplayer.title": "Lieber mit anderen spielen?",
   "daily.multiplayer.body":
     "Das Tagesrätsel ist für alle dasselbe und wird allein gespielt. Im Mehrspieler-Spiel gibt es ein frisches Feld, niemand sieht, worauf die anderen setzen, und Punkte bekommt, wer eine Kategorie zuerst trifft.",
