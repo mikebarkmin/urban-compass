@@ -93,7 +93,7 @@ const Daily = () => {
 
   if (!puzzle) {
     return (
-      <div className="panel grid place-items-center p-16 text-center text-sm text-chart-400">
+      <div className="panel mt-20 grid place-items-center p-16 text-center text-sm text-chart-400">
         {t("daily.loading")}
       </div>
     );
@@ -101,6 +101,8 @@ const Daily = () => {
 
   const placedCount = DAILY_CATEGORIES.filter((category) => picks[category]).length;
   const score = revealed ? scorePicks(puzzle, picks) : 0;
+  const ready = placedCount === DAILY_CATEGORIES.length;
+  const showBottomBar = revealed || !!selected || ready;
 
   const assign = (cityId: string) => {
     if (!selected || revealed) return;
@@ -158,29 +160,62 @@ const Daily = () => {
     : {};
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-chart-700 bg-chart-850/60 px-4 py-3">
-          <div>
-            <div className="font-display text-sm font-semibold text-chart-100">
-              {t("daily.title", { number: puzzle.number })}
-              {revealed && (
-                <span className="ml-2 text-beacon-400">
-                  {score}/{DAILY_CATEGORIES.length}
-                </span>
+    <>
+      {/* Status banner — fixed at the top, mirroring the multiplayer board. */}
+      <div
+        className={cx(
+          "fixed inset-x-0 top-0 z-40 border-b backdrop-blur",
+          selected && !revealed
+            ? "border-beacon-500/30 bg-beacon-500"
+            : "border-chart-700 bg-chart-950/95",
+        )}
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+            <Link
+              href="/"
+              aria-label={t("daily.backToRooms")}
+              className={cx(
+                "grid h-8 w-8 shrink-0 place-items-center rounded-lg border text-sm transition-colors",
+                selected && !revealed
+                  ? "border-chart-950/20 text-chart-950 hover:bg-chart-950/10"
+                  : "border-chart-700 text-chart-400 hover:bg-chart-800 hover:text-chart-200",
               )}
-            </div>
-            <div className="text-xs text-chart-400">
-              {t("daily.meta", {
-                date: puzzle.key,
-                set: t(`set.${DAILY_SET_ID}.name`),
-                count: puzzle.cities.length,
-              })}
+            >
+              ←
+            </Link>
+            <div className="min-w-0">
+              <div
+                className={cx(
+                  "truncate font-display text-sm font-bold",
+                  selected && !revealed ? "text-chart-950" : "text-chart-100",
+                )}
+              >
+                {t("daily.title", { number: puzzle.number })}
+                {revealed && (
+                  <span className="ml-2 text-beacon-400">
+                    {score}/{DAILY_CATEGORIES.length}
+                  </span>
+                )}
+              </div>
+              <div
+                className={cx(
+                  "truncate text-xs",
+                  selected && !revealed ? "text-chart-800" : "text-chart-400",
+                )}
+              >
+                {t("daily.meta", {
+                  date: puzzle.key,
+                  set: t(`set.${DAILY_SET_ID}.name`),
+                  count: puzzle.cities.length,
+                })}
+              </div>
             </div>
           </div>
 
-          {revealed ? (
-            <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
+            {revealed ? (
               <span
                 className="flex items-center gap-1"
                 role="img"
@@ -193,22 +228,22 @@ const Daily = () => {
                   <MarkSquare key={category} mark={markFor(puzzle, category, picks[category])} />
                 ))}
               </span>
-              <Button size="sm" onClick={share}>
-                {copied ? t("daily.copied") : t("daily.share")}
-              </Button>
-            </div>
-          ) : (
-            <Button
-              size="sm"
-              disabled={placedCount < DAILY_CATEGORIES.length}
-              onClick={reveal}
-            >
-              {placedCount < DAILY_CATEGORIES.length
-                ? t("daily.placeMore", { count: DAILY_CATEGORIES.length - placedCount })
-                : t("daily.reveal")}
-            </Button>
-          )}
+            ) : (
+              <span
+                className={cx(
+                  "text-xs font-medium",
+                  selected && !revealed ? "text-chart-900" : "text-chart-400",
+                )}
+              >
+                {placedCount}/{DAILY_CATEGORIES.length}
+              </span>
+            )}
+          </div>
         </div>
+      </div>
+
+    <div className="grid gap-4 pb-32 pt-[4.5rem] lg:grid-cols-[1fr_320px] lg:pb-28 lg:pt-20">
+      <div className="space-y-4">
 
         <Panel
           title={t("daily.hand.title")}
@@ -427,6 +462,63 @@ const Daily = () => {
         </Panel>
       </div>
     </div>
+
+      {/* Action bar — fixed at the bottom, mirroring the multiplayer board. */}
+      {showBottomBar && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-50 border-t border-beacon-500/30 bg-beacon-500 shadow-2xl shadow-black/40 backdrop-blur"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-2.5">
+              {selected && !revealed && (
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-chart-950/20 bg-chart-950/10 px-2.5 py-1 text-sm font-semibold text-chart-950">
+                  <span className="text-base">{categoryIcons[selected]}</span>
+                  {t(`card.${selected}.short`)}
+                </span>
+              )}
+              <span className="min-w-0 truncate text-sm text-chart-800">
+                {revealed
+                  ? t("daily.resultLabel", { score, total: DAILY_CATEGORIES.length })
+                  : selected
+                    ? t("daily.hand.pick")
+                    : t("daily.hand.place", { count: DAILY_CATEGORIES.length })}
+              </span>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+              {selected && !revealed && (
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="text-sm text-chart-800 underline underline-offset-4 hover:text-chart-950"
+                >
+                  {t("board.cancel")}
+                </button>
+              )}
+              {ready && !revealed && !selected && (
+                <button
+                  type="button"
+                  onClick={reveal}
+                  className="rounded-full border border-chart-950 bg-chart-950 px-5 py-2.5 text-sm font-bold text-beacon-400 shadow-lg shadow-black/30 transition-all hover:bg-chart-900 sm:py-2"
+                >
+                  {t("daily.reveal")}
+                </button>
+              )}
+              {revealed && (
+                <button
+                  type="button"
+                  onClick={share}
+                  className="rounded-full border border-chart-950 bg-chart-950 px-5 py-2.5 text-sm font-bold text-beacon-400 shadow-lg shadow-black/30 transition-all hover:bg-chart-900 sm:py-2"
+                >
+                  {copied ? t("daily.copied") : t("daily.share")}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

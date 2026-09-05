@@ -1,5 +1,4 @@
 import Head from "next/head";
-import Link from "next/link";
 
 import Daily from "@/components/Daily";
 import Layout from "@/components/Layout";
@@ -16,16 +15,7 @@ export default function DailyPage() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <Layout
-        header={
-          <Link
-            href="/"
-            className="text-xs text-chart-500 underline underline-offset-4 transition-colors hover:text-chart-200"
-          >
-            {t("daily.backToRooms")}
-          </Link>
-        }
-      >
+      <Layout>
         <Daily />
       </Layout>
     </>
