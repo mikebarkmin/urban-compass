@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
-const MUTE_KEY = "urban-guessr:muted";
+const MUTE_KEY = "urban-compass:muted";
 
 /** The cues the reveal can play, kept as a string union so callers stay typed. */
 export type SoundCue =

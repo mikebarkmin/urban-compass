@@ -5,7 +5,7 @@
 
 import { City } from "../../game/cities";
 
-const STORAGE_KEY = "urban-guessr:saved-sets";
+const STORAGE_KEY = "urban-compass:saved-sets";
 
 /** A city set saved in the host's browser. */
 export interface SavedCitySet {

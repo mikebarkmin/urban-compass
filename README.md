@@ -1,4 +1,4 @@
-# 🎯 Urban Guessr
+# 🎯 Urban Compass
 
 A turn-based multiplayer geography game. Everyone holds the same six cards —
 _northernmost_, _southernmost_, _easternmost_, _westernmost_, _most inhabitants_,
@@ -237,7 +237,7 @@ for effectively every board size. `random` keeps the old behaviour if you want i
 anything. You place all six cards at once, reveal, and get a shareable grid:
 
 ```
-Urban Guessr Daily #248 — 4/6
+Urban Compass Daily #248 — 4/6
 🟨🟩🟩🟩⬛🟩
 ```
 

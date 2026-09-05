@@ -49,7 +49,7 @@ export interface DailyPuzzle {
 
 /** Build (or rebuild) a day's puzzle. Pure: the same key always gives the same board. */
 export const buildPuzzle = (key: string): DailyPuzzle => {
-  const random = mulberry32(seedFromString(`urban-guessr/${key}`));
+  const random = mulberry32(seedFromString(`urban-compass/${key}`));
   const cities = drawBoard(
     europeanCities,
     DAILY_CITY_COUNT,
@@ -94,7 +94,7 @@ export const scorePicks = (puzzle: DailyPuzzle, picks: Picks): number =>
 
 // --- Persistence -----------------------------------------------------------
 
-const STORAGE_KEY = "urban-guessr:daily";
+const STORAGE_KEY = "urban-compass:daily";
 
 export interface DailyResult {
   key: string;
@@ -199,7 +199,7 @@ export const shareText = (
 
   const score = scorePicks(puzzle, picks);
   const lines = [
-    `Urban Guessr Daily #${puzzle.number} — ${score}/${DAILY_CATEGORIES.length}`,
+    `Urban Compass Daily #${puzzle.number} — ${score}/${DAILY_CATEGORIES.length}`,
     squares,
   ];
   if (origin) lines.push(`${origin}/daily`);

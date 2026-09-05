@@ -21,7 +21,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 
 const DICTIONARIES: Record<Locale, Record<string, string>> = { en, de };
 
-const STORAGE_KEY = "urban-guessr:locale";
+const STORAGE_KEY = "urban-compass:locale";
 
 export type Params = Record<string, string | number>;
 

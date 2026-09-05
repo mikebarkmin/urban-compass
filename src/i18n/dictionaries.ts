@@ -8,7 +8,7 @@
 // optional `nameDe`, so an uploaded set works without touching this file.
 
 export const en = {
-  "app.name": "Urban Guessr",
+  "app.name": "Urban Compass",
   "app.tagline": "Where does what lie?",
   "app.footer": "Built on PartyKit · city sets can be swapped for any KMZ map",
   "app.language": "Language",
@@ -527,7 +527,7 @@ export const en = {
 export type MessageKey = keyof typeof en;
 
 export const de: Record<MessageKey, string> = {
-  "app.name": "Urban Guessr",
+  "app.name": "Urban Compass",
   "app.tagline": "Wo liegt was?",
   "app.footer": "Mit PartyKit gebaut · Städtesets lassen sich durch jede KMZ-Karte ersetzen",
   "app.language": "Sprache",

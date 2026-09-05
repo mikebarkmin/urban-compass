@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Urban Guessr — a dark "chart table" palette: deep navy paper, ink lines,
+/* Urban Compass — a dark "chart table" palette: deep navy paper, ink lines,
    amber for the player's own turn, cyan for confirmed information. */
 @theme {
   --color-chart-950: #070b14;
