@@ -73,6 +73,7 @@ export const en = {
   "lobby.extra.consolation":
     "The first player to bet a category's runner-up city banks 1 consolation point.",
   "lobby.extra.speedRound": "Faster turn clock and a quick reveal — for players who want to keep things moving.",
+  "lobby.extra.countryCodes": "City cards show each country's ISO code next to the name.",
   "lobby.players": "Players · {count}",
   "lobby.waitingFor": "Waiting for {count} more",
   "lobby.roomCode": "Room code",
@@ -152,6 +153,10 @@ export const en = {
   "settings.speedRound.on":
     "On: the turn clock runs at half speed and the reveal skips its slow staging.",
   "settings.speedRound.off": "Off: normal turn clock and staged reveal.",
+  "settings.countryCodes.label": "Country codes",
+  "settings.countryCodes.on":
+    "On: each city card shows its country's ISO code next to the name — a little easier to place.",
+  "settings.countryCodes.off": "Off: only the city name is shown.",
   "settings.on": "On",
   "settings.off": "Off",
   "settings.balanced": "Balanced",
@@ -600,6 +605,7 @@ export const de: Record<MessageKey, string> = {
   "lobby.extra.consolation":
     "Wer als Erstes die Zweitstadt einer Kategorie tippt, kassiert 1 Trostpunkt.",
   "lobby.extra.speedRound": "Schnellere Zuguhr und schnelle Auflösung — für alle, die zügig spielen wollen.",
+  "lobby.extra.countryCodes": "Stadtkarten zeigen den ISO-Ländercode neben dem Namen.",
   "lobby.players": "Mitspielende · {count}",
   "lobby.waitingFor": "Warte auf {count} weitere",
   "lobby.roomCode": "Raumcode",
@@ -679,6 +685,10 @@ export const de: Record<MessageKey, string> = {
   "settings.speedRound.on":
     "An: Die Zuguhr läuft halbiert und die Auflösung überspringt die langsame Inszenierung.",
   "settings.speedRound.off": "Aus: Normale Zuguhr und inszenierte Auflösung.",
+  "settings.countryCodes.label": "Ländercodes",
+  "settings.countryCodes.on":
+    "An: Jede Stadtkarte zeigt den ISO-Ländercode neben dem Namen — etwas leichter zuzuordnen.",
+  "settings.countryCodes.off": "Aus: Nur der Stadtname wird gezeigt.",
   "settings.on": "An",
   "settings.off": "Aus",
   "settings.balanced": "Ausgewogen",

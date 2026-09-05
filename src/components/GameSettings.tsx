@@ -79,6 +79,7 @@ const GameSettingsPanel = ({ gameState, isHost, dispatch }: GameSettingsProps) =
     settings.powerUps,
     settings.runnerUpConsolation,
     settings.speedRound,
+    settings.showCountryCodes,
   ].filter(Boolean).length;
 
   /** Toggling a card off is refused when it would leave too few in play. */
@@ -347,6 +348,23 @@ const GameSettingsPanel = ({ gameState, isHost, dispatch }: GameSettingsProps) =
           options={[
             { value: "balanced", label: t("settings.balanced") },
             { value: "random", label: t("settings.random") },
+          ]}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label={t("settings.countryCodes.label")}
+        hint={t(
+          settings.showCountryCodes ? "settings.countryCodes.on" : "settings.countryCodes.off",
+        )}
+      >
+        <Segmented<boolean>
+          value={settings.showCountryCodes}
+          disabled={locked}
+          onChange={(showCountryCodes) => update({ showCountryCodes })}
+          options={[
+            { value: false, label: t("settings.off") },
+            { value: true, label: t("settings.on") },
           ]}
         />
       </SettingRow>

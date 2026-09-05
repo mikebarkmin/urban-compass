@@ -321,3 +321,22 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+@media (pointer: coarse) {
+  /* Backdrop-filter blur is the single biggest GPU cost on a phone: every
+     panel re-renders its backdrop into an offscreen texture and re-blurs it
+     each frame, and the fixed bars do so on every scroll. The panel's solid
+     background-color already carries the surface, so dropping the blur loses
+     almost nothing visually while recovering the frame budget. */
+  .panel,
+  .backdrop-blur {
+    backdrop-filter: none;
+  }
+
+  /* The drifting graticule is a purely decorative infinite animation. On a
+     touch device it keeps the compositor busy for the whole session for no
+     gameplay value, so freeze it. */
+  .animate-drift {
+    animation: none;
+  }
+}

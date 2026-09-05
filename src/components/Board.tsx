@@ -587,7 +587,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                         <span className="font-display text-sm font-semibold text-chart-100">
                           {cityName(city, locale)}
                         </span>
-                        {city.country && (
+                        {city.country && gameState.settings.showCountryCodes && (
                           <span className="mt-0.5 shrink-0 font-mono text-[10px] text-chart-500">
                             {city.country}
                           </span>

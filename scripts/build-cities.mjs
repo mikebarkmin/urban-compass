@@ -36,6 +36,21 @@ const parseCity = (line) => {
   const c = line.split("\t");
   if (c.length < 18) return null;
 
+  // Feature code (column 8) identifies what kind of place a row is. The
+  // cities5000 dump includes feature class P (populated places), but that
+  // covers several types that are not standalone cities:
+  //   PPLX — section of populated place (districts, neighbourhoods)
+  //   PPLH — historical populated place (no longer exists as such)
+  //   PPLQ — abandoned populated place
+  //   PPLW — destroyed populated place
+  //   PPLF — farm village (agricultural settlement, not a town)
+  // Pest (geonameid 3046446) is the eastern half of Budapest and was the
+  // kind of entry that showed up as a confusing near-duplicate, so every
+  // such row is dropped.
+  const NON_CITY_FEATURE_CODES = new Set(["PPLX", "PPLH", "PPLQ", "PPLW", "PPLF"]);
+  const featureCode = c[7];
+  if (NON_CITY_FEATURE_CODES.has(featureCode)) return null;
+
   const population = Number(c[14]); // column 15 (0-indexed 14)
   if (!Number.isFinite(population) || population <= 0) return null;
 

@@ -369,11 +369,6 @@ const Daily = () => {
                     <span className="font-display text-sm font-semibold text-chart-100">
                       {cityName(city, locale)}
                     </span>
-                    {city.country && (
-                      <span className="mt-0.5 shrink-0 font-mono text-[10px] text-chart-500">
-                        {city.country}
-                      </span>
-                    )}
                   </div>
 
                   <div className="mt-2 flex min-h-5 flex-wrap items-center gap-1">
@@ -431,8 +426,15 @@ const Daily = () => {
                       </span>
                     </div>
 
-                    <div className="mt-1.5 font-display text-lg font-bold text-beacon-400">
-                      {answer ? cityName(answer, locale) : ""}
+                    <div className="mt-1.5 flex items-baseline gap-2">
+                      <span className="font-display text-lg font-bold text-beacon-400">
+                        {answer ? cityName(answer, locale) : ""}
+                      </span>
+                      {answer?.country && (
+                        <span className="font-mono text-[10px] text-chart-500">
+                          {answer.country}
+                        </span>
+                      )}
                     </div>
 
                     <div className="mt-1 text-[11px] text-chart-500">

@@ -47,6 +47,7 @@ const Lobby = ({ gameState, username, roomId, dispatch }: LobbyProps) => {
     settings.powerUps && t("lobby.extra.powerUps"),
     settings.runnerUpConsolation && t("lobby.extra.consolation"),
     settings.speedRound && t("lobby.extra.speedRound"),
+    settings.showCountryCodes && t("lobby.extra.countryCodes"),
   ].filter((entry): entry is string => typeof entry === "string");
 
   const copyInvite = async () => {

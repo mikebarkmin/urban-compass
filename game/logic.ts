@@ -194,6 +194,12 @@ export interface GameSettings {
    * moving rather than dwell on each flip.
    */
   speedRound: boolean;
+  /**
+   * Whether each city card shows its country's ISO code next to the name. A
+   * helper that makes the board a little easier to read — off by default so the
+   * names stand on their own.
+   */
+  showCountryCodes: boolean;
 }
 
 /** When a player gets their one 2× card: never, once a game, or once a round. */
@@ -232,6 +238,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   powerUps: false,
   runnerUpConsolation: false,
   speedRound: false,
+  showCountryCodes: false,
 };
 
 /** How many timed-out turns a player gets before they sit out the round. */
@@ -907,6 +914,10 @@ const applySettings = (
 
   if (typeof patch.speedRound === "boolean") {
     next.speedRound = patch.speedRound;
+  }
+
+  if (typeof patch.showCountryCodes === "boolean") {
+    next.showCountryCodes = patch.showCountryCodes;
   }
 
   if (patch.wrongGuessPenalty !== undefined) {
