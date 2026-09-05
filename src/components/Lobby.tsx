@@ -42,6 +42,10 @@ const Lobby = ({ gameState, username, roomId, dispatch }: LobbyProps) => {
         andCost: settings.wrongGuessPenalty > 0 ? t("lobby.extra.doubleAndCost") : "",
       }),
     settings.steals && t("lobby.extra.steals"),
+    settings.doubts && t("lobby.extra.doubts"),
+    settings.powerUps && t("lobby.extra.powerUps"),
+    settings.runnerUpConsolation && t("lobby.extra.consolation"),
+    settings.speedRound && t("lobby.extra.speedRound"),
   ].filter((entry): entry is string => typeof entry === "string");
 
   const copyInvite = async () => {

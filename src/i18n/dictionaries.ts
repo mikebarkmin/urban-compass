@@ -66,6 +66,13 @@ export const en = {
   "lobby.extra.doubleAndCost": " and what it costs",
   "lobby.extra.steals":
     "A turn can be spent naming what an opponent bet — right takes their bet, wrong burns your card.",
+  "lobby.extra.doubts":
+    "A turn can be spent doubting an opponent's bet on a city — if every card they laid there is wrong you bank 2, if any is right your card burns.",
+  "lobby.extra.powerUps":
+    "Once a round, spend a turn moving one of your placed chips to another city.",
+  "lobby.extra.consolation":
+    "The first player to bet a category's runner-up city banks 1 consolation point.",
+  "lobby.extra.speedRound": "Faster turn clock and a quick reveal — for players who want to keep things moving.",
   "lobby.players": "Players · {count}",
   "lobby.waitingFor": "Waiting for {count} more",
   "lobby.roomCode": "Room code",
@@ -141,6 +148,10 @@ export const en = {
   "settings.consolation.on":
     "On: the first player to bet a category's runner-up city banks 1 point — a near miss is worth something.",
   "settings.consolation.off": "Off: only the right city scores.",
+  "settings.speedRound.label": "Speed round",
+  "settings.speedRound.on":
+    "On: the turn clock runs at half speed and the reveal skips its slow staging.",
+  "settings.speedRound.off": "Off: normal turn clock and staged reveal.",
   "settings.on": "On",
   "settings.off": "Off",
   "settings.balanced": "Balanced",
@@ -498,6 +509,7 @@ export const en = {
   "log.satOut": "{player} sat out the rest of the round. {next} is up.",
   "log.timedOut": "{player} ran out of time. {next} is up.",
   "log.timedOutRetired": "{player} ran out of time again and is out of the round. {next} is up.",
+  "log.paused": "{player}'s clock ran out — granted a pause and the turn clock resets.",
   "log.stealMissed":
     "{player} called {target}'s bet on {city} as {category} — wrong, and the card is gone. {next} is up.",
   "log.stealHit": "{player} read {target} exactly — {category} on {city} is theirs now. {next} is up.",
@@ -573,6 +585,13 @@ export const de: Record<MessageKey, string> = {
   "lobby.extra.doubleAndCost": " — und seinen Preis",
   "lobby.extra.steals":
     "Ein Zug kann darauf verwendet werden, den Tipp einer anderen Person zu benennen — richtig nimmt ihn dir, falsch kostet dich deine Karte.",
+  "lobby.extra.doubts":
+    "Ein Zug kann darauf verwendet werden, den Tipp einer anderen Person auf einer Stadt anzuzweifeln — wenn jede Karte dort falsch ist, kassierst du 2, wenn eine stimmt, brennt deine Karte.",
+  "lobby.extra.powerUps":
+    "Einmal pro Runde verbringst du einen Zug damit, einen deiner platzierten Chips auf eine andere Stadt zu verschieben.",
+  "lobby.extra.consolation":
+    "Wer als Erstes die Zweitstadt einer Kategorie tippt, kassiert 1 Trostpunkt.",
+  "lobby.extra.speedRound": "Schnellere Zuguhr und schnelle Auflösung — für alle, die zügig spielen wollen.",
   "lobby.players": "Mitspielende · {count}",
   "lobby.waitingFor": "Warte auf {count} weitere",
   "lobby.roomCode": "Raumcode",
@@ -648,6 +667,10 @@ export const de: Record<MessageKey, string> = {
   "settings.consolation.on":
     "An: Wer als Erstes die Zweitstadt einer Kategorie tippt, kassiert 1 Punkt — ein beinahe richtiger Tipp ist etwas wert.",
   "settings.consolation.off": "Aus: Nur die richtige Stadt bringt Punkte.",
+  "settings.speedRound.label": "Schnelle Runde",
+  "settings.speedRound.on":
+    "An: Die Zuguhr läuft halbiert und die Auflösung überspringt die langsame Inszenierung.",
+  "settings.speedRound.off": "Aus: Normale Zuguhr und inszenierte Auflösung.",
   "settings.on": "An",
   "settings.off": "Aus",
   "settings.balanced": "Ausgewogen",
@@ -1005,6 +1028,7 @@ export const de: Record<MessageKey, string> = {
   "log.satOut": "{player} setzt den Rest der Runde aus. {next} ist dran.",
   "log.timedOut": "{player} ist die Zeit ausgegangen. {next} ist dran.",
   "log.timedOutRetired": "{player} ist erneut die Zeit ausgegangen und ist raus aus der Runde. {next} ist dran.",
+  "log.paused": "{player}s Zeit ist abgelaufen — eine Pause wurde gewährt, die Uhr startet neu.",
   "log.stealMissed":
     "{player} hat {target}s Tipp auf {city} als {category} benannt — falsch, die Karte ist weg. {next} ist dran.",
   "log.stealHit": "{player} hat {target} genau gelesen — {category} auf {city} gehört jetzt ihnen. {next} ist dran.",

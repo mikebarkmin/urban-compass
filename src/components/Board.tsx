@@ -3,6 +3,7 @@ import {
   Action,
   ClientGameState,
   cardsLeftFor,
+  effectiveTurnSeconds,
   handSizeFor,
   roundsRemaining,
 } from "../../game/logic";
@@ -340,7 +341,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
           {gameState.turnEndsAt !== null && gameState.settings.turnSeconds > 0 && (
             <TurnClock
               endsAt={gameState.turnEndsAt}
-              totalSeconds={gameState.settings.turnSeconds}
+              totalSeconds={effectiveTurnSeconds(gameState.settings)}
               clockOffset={clockOffset}
               mine={isMyTurn}
             />

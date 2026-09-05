@@ -37,6 +37,11 @@ const INTRO_MS = 1200;
 const PER_CATEGORY_MS = 900;
 const OUTRO_DELAY_MS = 300;
 
+/** Pacing when the room plays a speed round — the reveal still stages, but fast. */
+const SPEED_INTRO_MS = 400;
+const SPEED_PER_CATEGORY_MS = 300;
+const SPEED_OUTRO_DELAY_MS = 100;
+
 type RevealStage = "intro" | "revealing" | "done";
 
 /**
@@ -86,6 +91,11 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
   const answers = gameState.correctAnswers;
   const { play } = useSound();
   const reduced = useReducedMotion();
+
+  // Speed round compresses the staged reveal so a fast game does not dwell.
+  const introMs = gameState.settings.speedRound ? SPEED_INTRO_MS : INTRO_MS;
+  const perCategoryMs = gameState.settings.speedRound ? SPEED_PER_CATEGORY_MS : PER_CATEGORY_MS;
+  const outroDelayMs = gameState.settings.speedRound ? SPEED_OUTRO_DELAY_MS : OUTRO_DELAY_MS;
 
   // Scored on the client from the same function the server used, so the two
   // can never disagree about who got what.
@@ -220,7 +230,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
           }
           setFloatingPoints(chips);
           window.setTimeout(() => setFloatingPoints({}), 1000);
-        }, i * PER_CATEGORY_MS);
+        }, i * perCategoryMs);
         timersRef.current.push(timer);
       });
 
@@ -228,9 +238,9 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
       const outroTimer = window.setTimeout(() => {
         setRevealStage("done");
         setFloatingPoints({});
-      }, total * PER_CATEGORY_MS + OUTRO_DELAY_MS);
+      }, total * perCategoryMs + outroDelayMs);
       timersRef.current.push(outroTimer);
-    }, INTRO_MS);
+    }, introMs);
     timersRef.current.push(introTimer);
 
     return clearTimers;

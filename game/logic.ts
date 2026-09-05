@@ -77,6 +77,8 @@ export interface User {
   doubleDownAvailable: boolean;
   /** Whether the player has spent their one power-up this round. */
   powerUpUsed: boolean;
+  /** Whether the player has used their one clock pause this round. */
+  pauseUsed: boolean;
   /** The player's editable avatar, randomised on join. */
   avatar: AvatarConfig;
 }
@@ -186,6 +188,12 @@ export interface GameSettings {
    * who almost had it something to chase late in a round.
    */
   runnerUpConsolation: boolean;
+  /**
+   * Whether the room plays at double speed: the turn clock is halved and the
+   * reveal skips its slow staging. A toggle for groups who want to keep things
+   * moving rather than dwell on each flip.
+   */
+  speedRound: boolean;
 }
 
 /** When a player gets their one 2× card: never, once a game, or once a round. */
@@ -223,6 +231,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   doubts: false,
   powerUps: false,
   runnerUpConsolation: false,
+  speedRound: false,
 };
 
 /** How many timed-out turns a player gets before they sit out the round. */
@@ -388,6 +397,7 @@ export const createUser = (id: string): User => ({
   burned: 0,
   doubleDownAvailable: false,
   powerUpUsed: false,
+  pauseUsed: false,
   avatar: randomAvatar(),
 });
 
@@ -583,6 +593,8 @@ const resetUsersForRound = (
       settings.doubleDown === "round" ? true : user.doubleDownAvailable,
     // A power-up is one use per round.
     powerUpUsed: false,
+    // A clock pause is one use per round.
+    pauseUsed: false,
   }));
 
 const withActiveUser = (users: User[], activeUserId: string | null): User[] =>
@@ -627,8 +639,22 @@ const nextTurnUserId = (
 };
 
 /** When the active player's clock expires, or null if the room plays untimed. */
-const turnDeadline = (settings: GameSettings): number | null =>
-  settings.turnSeconds > 0 ? Date.now() + settings.turnSeconds * 1000 : null;
+const turnDeadline = (settings: GameSettings): number | null => {
+  const seconds = effectiveTurnSeconds(settings);
+  return seconds > 0 ? Date.now() + seconds * 1000 : null;
+};
+
+/**
+ * The turn-clock length the room actually plays with. Speed round halves the
+ * host's chosen length (floored at the minimum) so a fast game stays fast
+ * without the host having to dial the clock down themselves.
+ */
+export const effectiveTurnSeconds = (settings: GameSettings): number => {
+  if (settings.turnSeconds <= 0) return 0;
+  return settings.speedRound
+    ? Math.max(SETTING_BOUNDS.turnSeconds.min, Math.floor(settings.turnSeconds / 2))
+    : settings.turnSeconds;
+};
 
 /**
  * Whoever has opened the fewest rounds so far, picked at random between ties.
@@ -877,6 +903,10 @@ const applySettings = (
 
   if (typeof patch.runnerUpConsolation === "boolean") {
     next.runnerUpConsolation = patch.runnerUpConsolation;
+  }
+
+  if (typeof patch.speedRound === "boolean") {
+    next.speedRound = patch.speedRound;
   }
 
   if (patch.wrongGuessPenalty !== undefined) {
@@ -1549,6 +1579,21 @@ export const gameUpdater = (action: ServerAction, state: GameState): GameState =
       }
       if (state.currentTurnUserId !== action.user.id) {
         return state;
+      }
+
+      // One clock pause a round: the first time a player's clock runs out the
+      // clock simply resets instead of costing the turn, so a brief AFK does
+      // not end a player's round. After that the normal timeout rules apply.
+      const timedOutUser = state.users.find((u) => u.id === action.user.id);
+      if (timedOutUser && !timedOutUser.pauseUsed) {
+        return {
+          ...state,
+          users: state.users.map((user) =>
+            user.id === action.user.id ? { ...user, pauseUsed: true } : user,
+          ),
+          turnEndsAt: turnDeadline(state.settings),
+          log: addLog("log.paused", state.log, { player: action.user.id }),
+        };
       }
 
       // One missed clock is a skipped turn; the next one takes the player out,

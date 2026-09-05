@@ -78,6 +78,7 @@ const GameSettingsPanel = ({ gameState, isHost, dispatch }: GameSettingsProps) =
     settings.doubts,
     settings.powerUps,
     settings.runnerUpConsolation,
+    settings.speedRound,
   ].filter(Boolean).length;
 
   /** Toggling a card off is refused when it would leave too few in play. */
@@ -311,6 +312,21 @@ const GameSettingsPanel = ({ gameState, isHost, dispatch }: GameSettingsProps) =
           value={settings.runnerUpConsolation}
           disabled={locked}
           onChange={(runnerUpConsolation) => update({ runnerUpConsolation })}
+          options={[
+            { value: false, label: t("settings.off") },
+            { value: true, label: t("settings.on") },
+          ]}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label={t("settings.speedRound.label")}
+        hint={t(settings.speedRound ? "settings.speedRound.on" : "settings.speedRound.off")}
+      >
+        <Segmented<boolean>
+          value={settings.speedRound}
+          disabled={locked}
+          onChange={(speedRound) => update({ speedRound })}
           options={[
             { value: false, label: t("settings.off") },
             { value: true, label: t("settings.on") },
