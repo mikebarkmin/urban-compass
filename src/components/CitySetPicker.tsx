@@ -1,4 +1,4 @@
-import { DragEvent, useRef, useState } from "react";
+import { DragEvent, useEffect, useRef, useState } from "react";
 import {
   CITY_SETS,
   CUSTOM_CITY_SET_ID,
@@ -14,9 +14,17 @@ import {
   parseCityFile,
   swapCoordinates,
 } from "@/utils/kmz";
+import { exportKmz } from "@/utils/kmzExport";
+import {
+  deleteSavedSet,
+  loadSavedSets,
+  saveSet,
+  type SavedCitySet,
+} from "@/data/savedSets";
 import { useLocale } from "@/i18n";
 import { Badge, Button, cx } from "./ui";
 import MiniMap from "./MiniMap";
+import CitySetBuilder from "./CitySetBuilder";
 
 interface CitySetPickerProps {
   citySetId: string;
@@ -44,7 +52,19 @@ const CitySetPicker = ({
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  const [savedSets, setSavedSets] = useState<SavedCitySet[]>([]);
+  const [uploadSaved, setUploadSaved] = useState(false);
+  const [editTarget, setEditTarget] = useState<{
+    id: string;
+    name: string;
+    cities: City[];
+  } | null>(null);
+
   const locked = !isHost || disabled;
+
+  useEffect(() => {
+    setSavedSets(loadSavedSets());
+  }, []);
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
@@ -59,6 +79,7 @@ const CitySetPicker = ({
         );
       } else {
         setParsed(result);
+        setUploadSaved(false);
       }
     } catch (cause) {
       setParsed(null);
@@ -133,6 +154,18 @@ const CitySetPicker = ({
         );
       })}
 
+      <CitySetBuilder
+        locked={locked}
+        inUse={citySetId === CUSTOM_CITY_SET_ID}
+        onUpload={onUpload}
+        onSaved={() => setSavedSets(loadSavedSets())}
+        editTarget={editTarget}
+        onEditComplete={() => {
+          setEditTarget(null);
+          setSavedSets(loadSavedSets());
+        }}
+      />
+
       <div
         onDragOver={(event) => {
           event.preventDefault();
@@ -153,9 +186,6 @@ const CitySetPicker = ({
               <span className="font-display text-sm font-semibold text-chart-100">
                 {t("picker.upload.title")}
               </span>
-              {citySetId === CUSTOM_CITY_SET_ID && (
-                <Badge tone="beacon">{t("picker.upload.inUse")}</Badge>
-              )}
             </div>
             <p className="mt-1 text-xs text-chart-400">{t("home.feature.upload")}</p>
           </div>
@@ -233,6 +263,25 @@ const CitySetPicker = ({
                   </>
                 )}
                 <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void exportKmz(parsed.name, parsed.cities)}
+                >
+                  {t("saved.export")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={uploadSaved}
+                  onClick={() => {
+                    saveSet(parsed.name, parsed.cities);
+                    setUploadSaved(true);
+                    setSavedSets(loadSavedSets());
+                  }}
+                >
+                  {uploadSaved ? t("saved.saved") : t("saved.save")}
+                </Button>
+                <Button
                   size="sm"
                   onClick={() => {
                     onUpload(parsed.name, parsed.cities);
@@ -286,12 +335,88 @@ const CitySetPicker = ({
         )}
       </div>
 
-      <p className="text-xs text-chart-500">
-        {t("set.playing", {
-          set: citySetId === CUSTOM_CITY_SET_ID ? citySetName : t(`set.${citySetId}.name`),
-          count: poolSize,
-        })}
-      </p>
+      {savedSets.length > 0 && (
+        <div className="rounded-xl border border-chart-700 bg-chart-850/40 p-4">
+          <div className="mb-3 text-[11px] font-semibold tracking-[0.14em] text-chart-500 uppercase">
+            {t("saved.title")}
+          </div>
+          <ul className="space-y-2">
+            {savedSets.map((set) => {
+              const isActive =
+                citySetId === CUSTOM_CITY_SET_ID && set.name === citySetName;
+              return (
+              <li key={set.id} className="space-y-2">
+                <div
+                  className={cx(
+                    "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors",
+                    isActive
+                      ? "border-beacon-500/60 bg-beacon-500/10"
+                      : "border-chart-800 bg-chart-900/50",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-display text-sm font-semibold text-chart-100">
+                        {set.name}
+                      </span>
+                      {isActive && <Badge tone="beacon">{t("picker.upload.inUse")}</Badge>}
+                    </div>
+                    <div className="text-[11px] text-chart-500">
+                      {t("picker.cities", { count: set.cities.length })}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void exportKmz(set.name, set.cities)}
+                    >
+                      {t("saved.export")}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={locked}
+                      onClick={() =>
+                        setEditTarget({
+                          id: set.id,
+                          name: set.name,
+                          cities: set.cities,
+                        })
+                      }
+                    >
+                      {t("saved.load")}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSavedSets(deleteSavedSet(set.id))}
+                    >
+                      {t("saved.delete")}
+                    </Button>
+                  </div>
+                </div>
+              </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      <div className="rounded-lg border border-chart-700 bg-chart-900/60 px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">🎯</span>
+          <span className="text-xs text-chart-300">
+            {t("set.playing", {
+              set:
+                citySetId === CUSTOM_CITY_SET_ID
+                  ? citySetName
+                  : t(`set.${citySetId}.name`),
+              count: poolSize,
+            })}
+          </span>
+        </div>
+      </div>
     </div>
   );
 };

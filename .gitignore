@@ -36,3 +36,6 @@ next-env.d.ts
 
 # partykit
 .partykit
+
+# geonames source dumps (regenerate public/cities5000.json via npm run build:cities)
+/data

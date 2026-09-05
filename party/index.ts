@@ -51,6 +51,14 @@ export default class Server implements Party.Server {
   private gameState: GameState;
   /** The pending turn-clock timer, if the room is playing with one. */
   private turnTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Reconnect grace timers per user id. On disconnect the user is not removed
+   * immediately; instead a timer is started. If the same user reconnects before
+   * it fires (a page refresh, a brief network drop), the timer is cancelled and
+   * the user's state is preserved. If it fires, the user is removed for real.
+   */
+  private reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private static readonly RECONNECT_GRACE_MS = 10_000;
 
   constructor(readonly party: Party.Party) {
     this.gameState = initialGame();
@@ -101,11 +109,31 @@ export default class Server implements Party.Server {
   }
 
   onConnect(connection: Party.Connection) {
+    // If a reconnect timer was ticking for this user, cancel it — they are back
+    // and their state (score, guesses, turn) was preserved through the grace
+    // period. The UserEntered below becomes a no-op since the user still exists.
+    const pending = this.reconnectTimers.get(connection.id);
+    if (pending !== undefined) {
+      clearTimeout(pending);
+      this.reconnectTimers.delete(connection.id);
+    }
+
     this.apply({ type: "UserEntered", user: createUser(connection.id) });
   }
 
   onClose(connection: Party.Connection) {
-    this.apply({ type: "UserExit", user: createUser(connection.id) });
+    // Don't remove the user immediately. Start a grace timer so a page refresh
+    // or brief network drop does not wipe their score and guesses. If they
+    // don't come back within the grace period, remove them for real.
+    const userId = connection.id;
+    if (this.reconnectTimers.has(userId)) return;
+
+    const timer = setTimeout(() => {
+      this.reconnectTimers.delete(userId);
+      this.apply({ type: "UserExit", user: createUser(userId) });
+    }, Server.RECONNECT_GRACE_MS);
+
+    this.reconnectTimers.set(userId, timer);
   }
 
   onMessage(message: string, sender: Party.Connection) {

@@ -329,7 +329,10 @@ export const parseKml = (kml: string, fallbackName: string): ParsedCitySet => {
 
   const documentName = textOf(doc.querySelector("Document > name")) || fallbackName;
   const usePointGeometry = placemarks.filter((p) => p.point).length >= placemarks.length * 0.8;
-  const detected = usePointGeometry ? null : chooseColumns(placemarks);
+  // Always detect columns: even when <Point> geometry provides coordinates,
+  // the population may live in <ExtendedData> columns (as it does in our own
+  // exports, which carry both for Google Earth compatibility).
+  const detected = chooseColumns(placemarks);
 
   if (!usePointGeometry && !detected) {
     throw new KmzParseError(

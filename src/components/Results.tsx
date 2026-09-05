@@ -74,9 +74,6 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
   );
   const totalRounds = gameState.roundNumber + remaining;
 
-  // What this player played on each category, to show them their near misses.
-  const myGuesses = gameState.categoryGuesses[username] ?? {};
-
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
       <div className="space-y-4">
@@ -130,10 +127,31 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
               const result = resultFor(category);
               const contenders = result?.contenders ?? [];
 
-              // Only worth showing when this player played the card and missed.
-              const myBet = myGuesses[category];
-              const myCity = myBet && gameState.cities.find((c) => c.id === myBet.cityId);
-              const miss = myCity ? missOf(myCity, city, category) : null;
+              // Every player who played a card on this category, split into
+              // correct (contenders) and wrong guesses, so the whole table can
+              // reason about the round — not just the viewer's own near-miss.
+              const allGuesses = Object.entries(gameState.categoryGuesses)
+                .filter(([userId, guesses]) => guesses[category])
+                .map(([userId, guesses]) => {
+                  const guess = guesses[category]!;
+                  const guessedCity = gameState.cities.find((c) => c.id === guess.cityId);
+                  const isCorrect = guess.cityId === city.id;
+                  const contender = contenders.find((c) => c.guess.userId === userId);
+                  return {
+                    userId,
+                    guess,
+                    guessedCity: guessedCity ?? null,
+                    isCorrect,
+                    doubled: !!guess.doubled,
+                    points: contender?.points ?? 0,
+                    miss:
+                      guessedCity && !isCorrect
+                        ? missOf(guessedCity, city, category)
+                        : null,
+                  };
+                });
+
+              const wrongGuesses = allGuesses.filter((g) => !g.isCorrect);
 
               return (
                 <div
@@ -195,12 +213,39 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
                     </div>
                   )}
 
-                  {miss && myCity && (
-                    <div className="mt-2 border-t border-chart-800 pt-2 text-[11px] text-chart-500">
-                      {t("results.youPlayed", {
-                        city: cityName(myCity, locale),
-                        miss: t(miss.key, { value: miss.value }),
-                      })}
+                  {wrongGuesses.length > 0 && (
+                    <div className="mt-2 border-t border-chart-800 pt-2">
+                      <div className="mb-1 text-[10px] font-semibold tracking-[0.12em] text-chart-600 uppercase">
+                        {t("results.wrong")}
+                      </div>
+                      <ul className="space-y-1">
+                        {wrongGuesses.map(({ userId, guessedCity, miss, doubled }) => (
+                          <li
+                            key={userId}
+                            className={cx(
+                              "flex items-center gap-1.5 text-[11px]",
+                              userId === username ? "text-chart-200" : "text-chart-400",
+                            )}
+                          >
+                            <Avatar name={userId} seed={userId + roomId} size={16} />
+                            <span className="font-medium">{userId}</span>
+                            {doubled && (
+                              <span className="font-semibold text-beacon-400" title={t("results.doubledTitle")}>
+                                2×
+                              </span>
+                            )}
+                            <span className="text-chart-500">→</span>
+                            <span className="text-chart-300">
+                              {guessedCity ? cityName(guessedCity, locale) : "?"}
+                            </span>
+                            {miss && (
+                              <span className="text-chart-600">
+                                ({t(miss.key, { value: miss.value })})
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>
