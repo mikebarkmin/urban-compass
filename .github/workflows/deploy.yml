@@ -18,8 +18,6 @@ jobs:
   partykit:
     name: Deploy PartyKit server
     runs-on: ubuntu-latest
-    outputs:
-      server-url: ${{ steps.server.outputs.url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -46,7 +44,6 @@ jobs:
             name=$(node -p "require('./partykit.json').name")
             url="${name}.${{ secrets.PARTYKIT_LOGIN }}.partykit.dev"
           fi
-          echo "url=$url" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build static site
@@ -70,7 +67,7 @@ jobs:
         env:
           # `github.io/<repo>` unless Pages is served from a custom domain.
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
-          NEXT_PUBLIC_SERVER_URL: ${{ needs.partykit.outputs.server-url }}
+          NEXT_PUBLIC_SERVER_URL: ${{ secrets.PARTYKIT_SERVER }}
 
       # `_next/` would otherwise be swallowed by GitHub Pages' Jekyll pipeline.
       - run: touch out/.nojekyll
