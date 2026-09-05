@@ -34,7 +34,7 @@ const toPublicState = (state: GameState): ClientGameState => {
     area: revealed ? (city.area ?? null) : null,
   }));
 
-  const { cityPool, ...rest } = state;
+  const { cityPool, parkedUsers, ...rest } = state;
 
   return {
     ...rest,

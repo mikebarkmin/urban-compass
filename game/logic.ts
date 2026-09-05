@@ -296,6 +296,14 @@ export interface GameState extends BaseGameState {
    * function — keeps a single source of truth. Reset every round.
    */
   doubtBonus: Record<string, number>;
+  /**
+   * Users who left after the reconnect grace expired. Their score, avatar and
+   * other game-level data are parked here so that rejoining with the same name
+   * restores them instead of creating a fresh player. Round-specific data is
+   * not restored — they spectate the rest of the current round and are dealt in
+   * normally next round.
+   */
+  parkedUsers: Record<string, User>;
 }
 
 /**
@@ -303,7 +311,7 @@ export interface GameState extends BaseGameState {
  * and in-play cities are stripped of the values that would give the answers
  * away. See `toPublicState` in the server.
  */
-export type ClientGameState = Omit<GameState, "cities" | "cityPool"> & {
+export type ClientGameState = Omit<GameState, "cities" | "cityPool" | "parkedUsers"> & {
   cities: PublicCity[];
   cityPool: never[];
   poolSize: number;
@@ -350,6 +358,7 @@ export const initialGame = (): GameState => {
     turnOrder: [],
     usedCityIds: [],
     doubtBonus: {},
+    parkedUsers: {},
     log: addLog("log.roomCreated", []),
   };
 };
@@ -800,6 +809,7 @@ const startGame = (state: GameState): GameState =>
       })),
       starterCounts: {},
       usedCityIds: [],
+      parkedUsers: {},
       log: addLog("log.newGame", state.log, {
         cycles: state.settings.cycles,
         total: state.users.length * state.settings.cycles,
@@ -945,21 +955,52 @@ export const gameUpdater = (action: ServerAction, state: GameState): GameState =
         return state;
       }
 
-      const joining = {
-        ...createUser(action.user.id),
-        doubleDownAvailable: state.settings.doubleDown !== "off",
-      };
+      // If this user was parked (left after the reconnect grace expired),
+      // restore their score, avatar and other game-level data. Round-specific
+      // data is reset so they spectate the rest of the current round and are
+      // dealt in normally when the next one starts.
+      const parked = state.parkedUsers[action.user.id];
+      const joining = parked
+        ? {
+            ...parked,
+            availableGuessCards: [...state.categories],
+            placedGuesses: [],
+            isActive: false,
+            inRound: false,
+            timeouts: 0,
+            burned: 0,
+            powerUpUsed: false,
+            pauseUsed: false,
+          }
+        : {
+            ...createUser(action.user.id),
+            doubleDownAvailable: state.settings.doubleDown !== "off",
+          };
+
       const users = [...state.users, joining];
       const hostId = state.hostId ?? joining.id;
 
-      // A newcomer has opened no rounds, so the game stretches to give them
-      // their turn as starter rather than ending around them.
+      // A returning player keeps their starter count; a newcomer starts at 0.
+      // A returning player's old chips may still be on the board (categoryGuesses
+      // is not cleared on exit), so preserve them rather than wiping to {}.
+      const starterCounts = parked
+        ? state.starterCounts
+        : { ...state.starterCounts, [joining.id]: 0 };
+      const categoryGuesses = parked
+        ? state.categoryGuesses
+        : { ...state.categoryGuesses, [joining.id]: {} };
+
+      // Clear the parked entry now that the user is back.
+      const parkedUsers = { ...state.parkedUsers };
+      delete parkedUsers[action.user.id];
+
       const entered: GameState = {
         ...state,
         users,
         hostId,
-        starterCounts: { ...state.starterCounts, [joining.id]: 0 },
-        categoryGuesses: { ...state.categoryGuesses, [joining.id]: {} },
+        starterCounts,
+        categoryGuesses,
+        parkedUsers,
         log: addLog(hostId === joining.id ? "log.joinedHost" : "log.joined", state.log, {
           player: joining.id,
         }),
@@ -978,14 +1019,22 @@ export const gameUpdater = (action: ServerAction, state: GameState): GameState =
     }
 
     case "UserExit": {
+      const exiting = state.users.find((user) => user.id === action.user.id);
       const users = state.users.filter((user) => user.id !== action.user.id);
       const hostId =
         state.hostId === action.user.id ? (users[0]?.id ?? null) : state.hostId;
+
+      // Park the departing user's game-level data so a later rejoin with the
+      // same name restores their score and avatar rather than starting fresh.
+      const parkedUsers = exiting
+        ? { ...state.parkedUsers, [action.user.id]: exiting }
+        : state.parkedUsers;
 
       let leftState: GameState = {
         ...state,
         users,
         hostId,
+        parkedUsers,
         log: addLog("log.left", state.log, { player: action.user.id }),
       };
 
