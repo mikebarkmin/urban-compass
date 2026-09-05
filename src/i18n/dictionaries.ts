@@ -12,6 +12,8 @@ export const en = {
   "app.tagline": "Where does what lie?",
   "app.footer": "Built on PartyKit · city sets can be swapped for any KMZ map",
   "app.language": "Language",
+  "app.mute": "Mute sound",
+  "app.unmute": "Unmute sound",
 
   "home.title": "Which one is the {word}?",
   "home.titleWord": "northernmost",
@@ -236,6 +238,10 @@ export const en = {
   "results.wrong": "Wrong guesses",
   "results.correct": "Correct",
 
+  "results.reveal.intro": "Revealing round {round}…",
+  "results.reveal.skip": "Skip reveal →",
+  "results.reveal.points": "+{points}",
+
   "gameover.wins": "{player} wins with {score} points 🏆",
   "gameover.draw": "A draw — {players} tie on {score}",
   "gameover.over": "Game over",
@@ -451,6 +457,8 @@ export const de: Record<MessageKey, string> = {
   "app.tagline": "Wo liegt was?",
   "app.footer": "Mit PartyKit gebaut · Städtesets lassen sich durch jede KMZ-Karte ersetzen",
   "app.language": "Sprache",
+  "app.mute": "Ton aus",
+  "app.unmute": "Ton an",
 
   "home.title": "Welche liegt am {word}?",
   "home.titleWord": "nördlichsten",
@@ -674,6 +682,10 @@ export const de: Record<MessageKey, string> = {
   "results.doubledTitle": "Hat die 2×-Karte gespielt",
   "results.wrong": "Falsche Tipps",
   "results.correct": "Richtig",
+
+  "results.reveal.intro": "Runde {round} wird aufgedeckt …",
+  "results.reveal.skip": "Aufdeckung überspringen →",
+  "results.reveal.points": "+{points}",
 
   "gameover.wins": "{player} gewinnt mit {score} Punkten 🏆",
   "gameover.draw": "Unentschieden — {players} liegen gleichauf bei {score}",

@@ -89,7 +89,13 @@ const Game = ({ username, roomId, onLeave }: GameProps) => {
         />
       )}
       {(gameState.phase === "round_over" || gameState.phase === "game_over") && (
-        <Results gameState={gameState} username={username} roomId={roomId} dispatch={dispatch} />
+        <Results
+          key={gameState.roundNumber}
+          gameState={gameState}
+          username={username}
+          roomId={roomId}
+          dispatch={dispatch}
+        />
       )}
     </div>
   );

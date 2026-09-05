@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Space_Grotesk, Inter } from "next/font/google";
 import { LOCALES, LOCALE_LABELS, useLocale } from "@/i18n";
+import { useSound } from "@/hooks/useSound";
 import { cx } from "./ui";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -46,6 +47,26 @@ const LanguageSwitch = () => {
   );
 };
 
+const MuteToggle = () => {
+  const { muted, toggleMuted } = useSound();
+  const { t } = useLocale();
+  return (
+    <button
+      type="button"
+      onClick={toggleMuted}
+      title={muted ? t("app.unmute") : t("app.mute")}
+      aria-label={muted ? t("app.unmute") : t("app.mute")}
+      aria-pressed={muted}
+      className={cx(
+        "grid h-8 w-8 place-items-center rounded-lg border border-chart-700 text-chart-400 transition-colors hover:bg-chart-800 hover:text-chart-200",
+        muted && "text-chart-600",
+      )}
+    >
+      {muted ? "🔇" : "🔊"}
+    </button>
+  );
+};
+
 const Layout = ({ children, header }: LayoutProps) => {
   const { t } = useLocale();
 
@@ -78,6 +99,7 @@ const Layout = ({ children, header }: LayoutProps) => {
         </div>
         <div className="flex items-center gap-3">
           {header}
+          <MuteToggle />
           <LanguageSwitch />
         </div>
       </header>

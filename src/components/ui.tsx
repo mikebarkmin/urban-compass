@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes, ReactNode } from "react";
+import { ButtonHTMLAttributes, ReactNode, useEffect, useRef, useState } from "react";
 import { stringToColor } from "@/utils";
 
 export const cx = (...classes: (string | false | null | undefined)[]) =>
@@ -222,5 +222,93 @@ export const SettingRow = ({
       {hint && <p className="mt-1 text-xs text-chart-500">{hint}</p>}
     </div>
     <div className="flex shrink-0 items-center gap-3">{children}</div>
+  </div>
+);
+
+/** True when the user has asked the OS to minimise motion. */
+export const useReducedMotion = (): boolean => {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(query.matches);
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    query.addEventListener("change", handler);
+    return () => query.removeEventListener("change", handler);
+  }, []);
+  return reduced;
+};
+
+/**
+ * Animate a number from `from` to `target` over ~400ms with an ease-out curve.
+ * Uses requestAnimationFrame, so it pauses cleanly when the tab is hidden.
+ * Returns the current displayed value, which snaps to `target` instantly when
+ * reduced-motion is requested or `from` equals `target`.
+ */
+export const useCountUp = (
+  target: number,
+  from = 0,
+  duration = 400,
+): number => {
+  const reduced = useReducedMotion();
+  const [value, setValue] = useState(from);
+  const frameRef = useRef<number | null>(null);
+  // Tracks the value the last animation reached, so a new `target` animates
+  // from the current displayed value rather than the original `from`.
+  const fromRef = useRef(from);
+
+  useEffect(() => {
+    if (reduced || fromRef.current === target) {
+      setValue(target);
+      fromRef.current = target;
+      return;
+    }
+    const start = performance.now();
+    const startValue = fromRef.current;
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(startValue + (target - startValue) * eased);
+      setValue(current);
+      fromRef.current = current;
+      if (progress < 1) {
+        frameRef.current = requestAnimationFrame(animate);
+      } else {
+        fromRef.current = target;
+      }
+    };
+    frameRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, duration, reduced]);
+
+  return value;
+};
+
+/**
+ * A face-down answer card for the staged reveal: a rounded card with the
+ * compass-rose pattern from `globals.css` and the category icon centred on it.
+ * Rendered as the back face inside a `.flip-scene` / `.flip-card` wrapper.
+ */
+export const CardBack = ({
+  icon,
+  className,
+}: {
+  icon: ReactNode;
+  className?: string;
+}) => (
+  <div
+    className={cx(
+      "card-back flip-face flip-face--back grid place-items-center rounded-xl border border-chart-700",
+      className,
+    )}
+  >
+    <span className="font-display text-2xl text-chart-500/70" aria-hidden>
+      {icon}
+    </span>
   </div>
 );

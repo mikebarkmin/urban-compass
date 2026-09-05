@@ -31,6 +31,12 @@
   --animate-rise: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-pulse-ring: pulse-ring 2s ease-out infinite;
   --animate-drift: drift 18s ease-in-out infinite;
+  --animate-flip: flip 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+  --animate-pop: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-float-up: float-up 1s ease-out both;
+  --animate-drumroll: drumroll 1.2s ease-in-out both;
+  --animate-confetti-fade: confetti-fade 0.8s ease-out both;
+  --animate-count-up: count-up 0.4s ease-out both;
 
   @keyframes appear {
     from {
@@ -71,6 +77,73 @@
     }
     50% {
       transform: translate3d(-2%, 1.5%, 0);
+    }
+  }
+
+  @keyframes flip {
+    from {
+      transform: rotateY(180deg);
+    }
+    to {
+      transform: rotateY(0deg);
+    }
+  }
+
+  @keyframes pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    70% {
+      transform: scale(1.08);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes float-up {
+    0% {
+      opacity: 0;
+      transform: translateY(0);
+    }
+    15% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-28px);
+    }
+  }
+
+  @keyframes drumroll {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  @keyframes confetti-fade {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes count-up {
+    from {
+      transform: translateY(2px);
+      opacity: 0.5;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
     }
   }
 }
@@ -137,5 +210,68 @@
   }
   .thin-scroll::-webkit-scrollbar-track {
     background: transparent;
+  }
+
+  /* A face-down answer card during the staged reveal: a compass-rose pattern
+     over the chart palette. The 3D flip wrapper gives it `perspective` and
+     `transform-style: preserve-3d`, while both faces use `backface-visibility:
+     hidden` so only the visible side renders. */
+  .flip-scene {
+    perspective: 800px;
+  }
+  .flip-card {
+    position: relative;
+    transform-style: preserve-3d;
+  }
+  .flip-face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flip-face--back {
+    position: absolute;
+    inset: 0;
+    transform: rotateY(180deg);
+  }
+
+  /* The compass-rose pattern on a card back. */
+  .card-back {
+    background-color: color-mix(in oklab, var(--color-chart-850) 90%, transparent);
+    background-image:
+      radial-gradient(
+        circle at center,
+        color-mix(in oklab, var(--color-chart-600) 30%, transparent) 1px,
+        transparent 1.5px
+      ),
+      conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        color-mix(in oklab, var(--color-chart-500) 18%, transparent) 10deg,
+        transparent 20deg,
+        transparent 80deg,
+        color-mix(in oklab, var(--color-chart-500) 18%, transparent) 90deg,
+        transparent 100deg,
+        transparent 170deg,
+        color-mix(in oklab, var(--color-chart-500) 18%, transparent) 180deg,
+        transparent 190deg,
+        transparent 260deg,
+        color-mix(in oklab, var(--color-chart-500) 18%, transparent) 270deg,
+        transparent 280deg
+      );
+    background-size:
+      12px 12px,
+      100% 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Collapse the staged reveal to instant, and skip purely decorative
+     animation. The reveal controller also short-circuits, but this makes sure
+     no stray CSS animation lingers. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

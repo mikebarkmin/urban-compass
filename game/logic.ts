@@ -238,6 +238,12 @@ export interface GameState extends BaseGameState {
   completedTurns: string[];
   /** Turn order, frozen when the round starts. */
   turnOrder: string[];
+  /**
+   * City ids that have already appeared on a board this game. A city is not
+   * drawn again until every other city in the pool has been used, then the
+   * list resets — like a shuffled playlist that only repeats once exhausted.
+   */
+  usedCityIds: string[];
 }
 
 /**
@@ -289,6 +295,7 @@ export const initialGame = (): GameState => {
     roundStarterId: null,
     completedTurns: [],
     turnOrder: [],
+    usedCityIds: [],
     log: addLog("log.roomCreated", []),
   };
 };
@@ -602,13 +609,27 @@ const finishRound = (state: GameState, users: User[], reasonKey: string): GameSt
 
 /** Deal a fresh round from the current pool, opened by a new starting player. */
 const startRound = (state: GameState, roundNumber: number): GameState => {
+  // Exclude cities that have already appeared this game. When too few remain
+  // for a full board, the list resets so the pool cycles without immediate
+  // repeats — like a shuffled playlist that only re-shuffles once played through.
+  const used = new Set(state.usedCityIds);
+  let drawPool = used.size > 0 ? state.cityPool.filter((c) => !used.has(c.id)) : state.cityPool;
+  if (drawPool.length < state.settings.citiesPerRound) {
+    drawPool = state.cityPool;
+  }
+
   const cities = drawBoard(
-    state.cityPool,
+    drawPool,
     state.settings.citiesPerRound,
     state.settings.boardQuality,
     Math.random,
     state.categories,
   );
+  const usedCityIds =
+    drawPool === state.cityPool
+      ? cities.map((c) => c.id)
+      : [...state.usedCityIds, ...cities.map((c) => c.id)];
+
   const users = resetUsersForRound(state.users, state.categories, state.settings);
 
   // Everybody plays every round; only the seat that opens it moves around.
@@ -636,6 +657,7 @@ const startRound = (state: GameState, roundNumber: number): GameState => {
     roundStarterId: starterId,
     completedTurns: [],
     turnOrder,
+    usedCityIds,
     roundStartTime: Date.now(),
     turnEndsAt: turnDeadline(state.settings),
   };
@@ -666,6 +688,7 @@ const startGame = (state: GameState): GameState =>
         doubleDownAvailable: state.settings.doubleDown !== "off",
       })),
       starterCounts: {},
+      usedCityIds: [],
       log: addLog("log.newGame", state.log, {
         cycles: state.settings.cycles,
         total: state.users.length * state.settings.cycles,
@@ -892,6 +915,7 @@ export const gameUpdater = (action: ServerAction, state: GameState): GameState =
         citySetName: set.name,
         cityPool: set.cities,
         categories,
+        usedCityIds: [],
         settings: applySettings(
           { ...state.settings, cardsPerPlayer: Math.min(state.settings.cardsPerPlayer, categories.length) },
           {},
@@ -928,6 +952,7 @@ export const gameUpdater = (action: ServerAction, state: GameState): GameState =
         citySetName,
         cityPool: cities,
         categories: uploadedCategories,
+        usedCityIds: [],
         settings: applySettings(
           {
             ...state.settings,
@@ -1041,6 +1066,7 @@ export const gameUpdater = (action: ServerAction, state: GameState): GameState =
         roundStarterId: null,
         completedTurns: [],
         turnOrder: [],
+        usedCityIds: [],
         log: addLog("log.backToLobby", state.log),
       };
     }

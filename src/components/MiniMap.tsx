@@ -11,6 +11,12 @@ interface MiniMapProps {
   cities: Plottable[];
   /** cityId -> the categories that city is the answer to. */
   highlights?: Record<string, Category[]>;
+  /**
+   * When set, only cities whose highlight categories intersect this subset are
+   * shown as answers. Used by the staged reveal to light up dots one category
+   * at a time; omitted (the default) reveals everything at once.
+   */
+  revealedCategories?: Category[];
   /** Draw names next to the dots. Off for dense pools. */
   labels?: boolean;
   className?: string;
@@ -25,11 +31,26 @@ interface MiniMapProps {
 const MiniMap = ({
   cities,
   highlights = {},
+  revealedCategories,
   labels = true,
   className,
   height = 260,
 }: MiniMapProps) => {
   const { locale, t } = useLocale();
+
+  // Filter highlights to only the categories that have been revealed so far.
+  // When `revealedCategories` is undefined, all highlights pass through.
+  const activeHighlights = useMemo(() => {
+    if (!revealedCategories) return highlights;
+    const revealed = new Set(revealedCategories);
+    const map: Record<string, Category[]> = {};
+    for (const [cityId, cats] of Object.entries(highlights)) {
+      const kept = cats.filter((c) => revealed.has(c));
+      if (kept.length > 0) map[cityId] = kept;
+    }
+    return map;
+  }, [highlights, revealedCategories]);
+
   const plotted = useMemo(() => {
     const points = cities.filter(
       (city): city is Plottable & { latitude: number; longitude: number } =>
@@ -84,14 +105,14 @@ const MiniMap = ({
       return true;
     };
 
-    const answers = placed.filter((city) => (highlights[city.id] ?? []).length > 0);
-    const rest = placed.filter((city) => (highlights[city.id] ?? []).length === 0);
+    const answers = placed.filter((city) => (activeHighlights[city.id] ?? []).length > 0);
+    const rest = placed.filter((city) => (activeHighlights[city.id] ?? []).length === 0);
     const labelled = new Set<string>();
     for (const city of answers) if (claim(city, 3.6)) labelled.add(city.id);
     for (const city of rest) if (claim(city, 3)) labelled.add(city.id);
 
     return { points: placed, labelled };
-  }, [cities, highlights, locale]);
+  }, [cities, activeHighlights, locale]);
 
   if (!plotted) {
     return (
@@ -119,7 +140,7 @@ const MiniMap = ({
       <svg viewBox="-14 -8 128 116" className="relative h-full w-full" role="img"
         aria-label={`Map of ${plotted.points.length} cities`}>
         {plotted.points.map((city) => {
-          const categories = highlights[city.id] ?? [];
+          const categories = activeHighlights[city.id] ?? [];
           const isAnswer = categories.length > 0;
 
           return (

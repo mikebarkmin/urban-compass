@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
 import { Action, ClientGameState, MIN_PLAYERS } from "../../game/logic";
 import { useT } from "@/i18n";
-import { Avatar, Badge, Button, cx } from "./ui";
+import { useSound } from "@/hooks/useSound";
+import { Avatar, Badge, Button, cx, useCountUp } from "./ui";
+import Confetti from "./Confetti";
 
 interface GameOverProps {
   gameState: ClientGameState;
@@ -33,18 +36,41 @@ const PODIUM = [
 ];
 
 /**
+ * A single podium score that counts up from zero to its final value. Kept as
+ * its own component so the `useCountUp` hook is called once per podium slot,
+ * not inside the podium map loop.
+ */
+const PodiumScore = ({ score }: { score: number }) => {
+  const display = useCountUp(score, 0, 600);
+  return (
+    <span className="font-display text-lg font-bold text-chart-100 tabular-nums">
+      {display}
+    </span>
+  );
+};
+
+/**
  * The end of a game: everybody has opened their share of rounds, so the totals
  * are final. Shown above the last round's reveal rather than instead of it, so
  * the answers people are still arguing about stay on screen.
  */
 const GameOver = ({ gameState, username, roomId, dispatch }: GameOverProps) => {
   const t = useT();
+  const { play } = useSound();
   const isHost = gameState.hostId === username;
   const ranked = [...gameState.users].sort((a, b) => b.score - a.score);
   const top = ranked[0];
   // A draw at the top is worth naming rather than quietly picking a winner.
   const champions = top ? ranked.filter((user) => user.score === top.score) : [];
   const drawn = champions.length > 1;
+
+  // Fire the fanfare and a confetti burst once on mount.
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
+  useEffect(() => {
+    play("fanfare");
+    setConfettiTrigger(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Second and third stand either side of the winner, tallest in the middle.
   // Only the places that actually exist get a column, so a two-player game does
@@ -57,6 +83,7 @@ const GameOver = ({ gameState, username, roomId, dispatch }: GameOverProps) => {
 
   return (
     <div className="animate-rise rounded-xl border border-beacon-500/40 bg-beacon-500/[0.07] p-5">
+      <Confetti trigger={confettiTrigger} count={120} duration={2500} origin={{ y: 0.35 }} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="font-display text-xl font-bold text-chart-100">
@@ -140,9 +167,7 @@ const GameOver = ({ gameState, username, roomId, dispatch }: GameOverProps) => {
                     place.bar,
                   )}
                 >
-                  <span className="font-display text-lg font-bold text-chart-100 tabular-nums">
-                    {user.score}
-                  </span>
+                  <PodiumScore score={user.score} />
                 </div>
               </div>
             );
