@@ -61,3 +61,19 @@ export const shareOrCopy = async (data: ShareData): Promise<ShareOutcome> => {
     return "failed";
   }
 };
+
+/**
+ * Hand a blob to the browser as a file download. The anchor has to be in the
+ * document for Firefox to honour the click, and the object URL is released
+ * straight after — the download has already taken its own reference.
+ */
+export const downloadBlob = (blob: Blob, filename: string): void => {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+};

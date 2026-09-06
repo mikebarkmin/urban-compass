@@ -359,6 +359,55 @@ export const en = {
     "The daily is the same puzzle for everybody, played alone. The multiplayer game deals a fresh board, hides what everyone bet, and pays out to whoever gets a category right first.",
   "daily.multiplayer.cta": "Open a room →",
   "daily.backToRooms": "Multiplayer rooms",
+  "daily.metaAuthored": "{date} · {note} · {count} cities · hand-picked",
+  "daily.authored": "Hand-picked",
+  "daily.playingPast": "You are playing an earlier day.",
+  "daily.previousDay": "Previous",
+  "daily.nextDay": "Next",
+  "daily.backToToday": "Back to today",
+
+  "archive.title": "The archive",
+  "archive.lede": "Every board since the first one. Days you never got to are still open.",
+  "archive.sub": "Missed a day? It is still there.",
+  "archive.browse": "Browse every past board →",
+  "archive.today": "Today",
+  "archive.unplayed": "Not played yet",
+  "archive.noResult": "Played, result not kept",
+
+  "sets.title": "City sets",
+  "sets.lede":
+    "Build a pool to play with, keep it for later, and lay out a daily board from it. Everything here stays in this browser until you export it.",
+
+  "author.title": "Author a daily",
+  "author.lede":
+    "Hand-pick the board for a given day. Download the file, commit it, and that day plays your board instead of a drawn one.",
+  "author.new": "New puzzle",
+  "author.none": "No hand-picked days yet.",
+  "author.edit": "Edit",
+  "author.date": "Day",
+  "author.dateHint": "Pick a day nobody has played yet.",
+  "author.datePast": "already past",
+  "author.note": "Label",
+  "author.notePlaceholder": "e.g. Alpine special",
+  "author.source": "Draw from",
+  "author.draw": "Draw a board",
+  "author.reroll": "Draw again",
+  "author.board": "The board",
+  "author.empty": "Draw a board, or search below to add cities one at a time.",
+  "author.searchPlaceholder": "Search this set to add a city…",
+  "author.warnUnanswerable":
+    "Some cards have no answer on this board. Every city needs coordinates and a population.",
+  "author.warnHoard":
+    "Only {distinct} of {total} cards land on different cities. One city taking several of them makes the board easier than it looks.",
+  "author.warnPast":
+    "This day may already have been played. Anyone who finished it keeps their result, but the board they see will change.",
+  "author.tooFew": "A board needs at least {needed} cities.",
+  "author.save": "Save this day",
+  "author.cancel": "Cancel",
+  "author.download": "Download dailyPuzzles.json",
+  "author.downloadHint":
+    "Save the file over game/data/dailyPuzzles.json and commit it. The site is a static build, so nothing goes live until it is deployed.",
+  "author.reset": "Reset to the committed file",
 
   "miss.km": "{value} km away",
   "miss.people": "{value} people out",
@@ -891,6 +940,56 @@ export const de: Record<MessageKey, string> = {
     "Das Tagesrätsel ist für alle dasselbe und wird allein gespielt. Im Mehrspieler-Spiel gibt es ein frisches Feld, niemand sieht, worauf die anderen setzen, und Punkte bekommt, wer eine Kategorie zuerst trifft.",
   "daily.multiplayer.cta": "Raum öffnen →",
   "daily.backToRooms": "Mehrspieler-Räume",
+  "daily.metaAuthored": "{date} · {note} · {count} Städte · handverlesen",
+  "daily.authored": "Handverlesen",
+  "daily.playingPast": "Du spielst einen früheren Tag.",
+  "daily.previousDay": "Vorheriger",
+  "daily.nextDay": "Nächster",
+  "daily.backToToday": "Zurück zu heute",
+
+  "archive.title": "Das Archiv",
+  "archive.lede":
+    "Jedes Feld seit dem ersten. Tage, zu denen du nicht gekommen bist, stehen weiter offen.",
+  "archive.sub": "Einen Tag verpasst? Der ist noch da.",
+  "archive.browse": "Alle früheren Felder ansehen →",
+  "archive.today": "Heute",
+  "archive.unplayed": "Noch nicht gespielt",
+  "archive.noResult": "Gespielt, Ergebnis nicht gespeichert",
+
+  "sets.title": "Städtesets",
+  "sets.lede":
+    "Bau dir einen Pool zum Spielen, heb ihn für später auf und leg daraus ein Tagesfeld an. Alles hier bleibt in diesem Browser, bis du es exportierst.",
+
+  "author.title": "Tagesrätsel anlegen",
+  "author.lede":
+    "Stell das Feld für einen bestimmten Tag selbst zusammen. Datei herunterladen, committen — dann spielt dieser Tag dein Feld statt eines gezogenen.",
+  "author.new": "Neues Rätsel",
+  "author.none": "Noch keine handverlesenen Tage.",
+  "author.edit": "Bearbeiten",
+  "author.date": "Tag",
+  "author.dateHint": "Nimm einen Tag, den noch niemand gespielt hat.",
+  "author.datePast": "schon vorbei",
+  "author.note": "Bezeichnung",
+  "author.notePlaceholder": "z. B. Alpen-Spezial",
+  "author.source": "Ziehen aus",
+  "author.draw": "Feld ziehen",
+  "author.reroll": "Neu ziehen",
+  "author.board": "Das Feld",
+  "author.empty": "Zieh ein Feld oder such unten nach einzelnen Städten.",
+  "author.searchPlaceholder": "In diesem Set nach einer Stadt suchen …",
+  "author.warnUnanswerable":
+    "Auf diesem Feld haben manche Karten keine Antwort. Jede Stadt braucht Koordinaten und eine Einwohnerzahl.",
+  "author.warnHoard":
+    "Nur {distinct} von {total} Karten landen auf verschiedenen Städten. Wenn eine Stadt mehrere davon holt, ist das Feld leichter, als es aussieht.",
+  "author.warnPast":
+    "Dieser Tag wurde vielleicht schon gespielt. Wer ihn beendet hat, behält sein Ergebnis, aber das Feld, das er sieht, ändert sich.",
+  "author.tooFew": "Ein Feld braucht mindestens {needed} Städte.",
+  "author.save": "Tag speichern",
+  "author.cancel": "Abbrechen",
+  "author.download": "dailyPuzzles.json herunterladen",
+  "author.downloadHint":
+    "Speicher die Datei über game/data/dailyPuzzles.json und commite sie. Die Seite ist ein statischer Build — live geht nichts, bevor deployt wurde.",
+  "author.reset": "Auf die committete Datei zurücksetzen",
 
   "miss.km": "{value} km daneben",
   "miss.people": "{value} Einwohner daneben",

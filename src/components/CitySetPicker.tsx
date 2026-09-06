@@ -16,7 +16,6 @@ import {
 } from "@/utils/kmz";
 import { exportKmz } from "@/utils/kmzExport";
 import {
-  deleteSavedSet,
   loadSavedSets,
   saveSet,
   type SavedCitySet,
@@ -26,6 +25,7 @@ import { Emoji } from "./Emoji";
 import { Badge, Button, cx } from "./ui";
 import MiniMap from "./MiniMap";
 import CitySetBuilder from "./CitySetBuilder";
+import SavedSetList from "./SavedSetList";
 
 interface CitySetPickerProps {
   citySetId: string;
@@ -336,73 +336,15 @@ const CitySetPicker = ({
         )}
       </div>
 
-      {savedSets.length > 0 && (
-        <div className="rounded-xl border border-chart-700 bg-chart-850/40 p-4">
-          <div className="mb-3 text-[11px] font-semibold tracking-[0.14em] text-chart-500 uppercase">
-            {t("saved.title")}
-          </div>
-          <ul className="space-y-2">
-            {savedSets.map((set) => {
-              const isActive =
-                citySetId === CUSTOM_CITY_SET_ID && set.name === citySetName;
-              return (
-              <li key={set.id} className="space-y-2">
-                <div
-                  className={cx(
-                    "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors",
-                    isActive
-                      ? "border-beacon-500/60 bg-beacon-500/10"
-                      : "border-chart-800 bg-chart-900/50",
-                  )}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-display text-sm font-semibold text-chart-100">
-                        {set.name}
-                      </span>
-                      {isActive && <Badge tone="beacon">{t("picker.upload.inUse")}</Badge>}
-                    </div>
-                    <div className="text-[11px] text-chart-500">
-                      {t("picker.cities", { count: set.cities.length })}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void exportKmz(set.name, set.cities)}
-                    >
-                      {t("saved.export")}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={locked}
-                      onClick={() =>
-                        setEditTarget({
-                          id: set.id,
-                          name: set.name,
-                          cities: set.cities,
-                        })
-                      }
-                    >
-                      {t("saved.load")}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSavedSets(deleteSavedSet(set.id))}
-                    >
-                      {t("saved.delete")}
-                    </Button>
-                  </div>
-                </div>
-              </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+      <SavedSetList
+        sets={savedSets}
+        activeName={citySetId === CUSTOM_CITY_SET_ID ? citySetName : undefined}
+        locked={locked}
+        onEdit={(set) =>
+          setEditTarget({ id: set.id, name: set.name, cities: set.cities })
+        }
+        onChange={setSavedSets}
+      />
 
       <div className="rounded-lg border border-chart-700 bg-chart-900/60 px-3 py-2.5">
         <div className="flex items-center gap-2">

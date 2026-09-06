@@ -113,19 +113,28 @@ export default function Home() {
                 ))}
               </ul>
 
-              <Link
-                href="/daily"
-                className="mt-8 flex items-center gap-3 rounded-xl border border-chart-700 bg-chart-850/60 px-4 py-3 transition-colors hover:border-beacon-500/60 hover:bg-beacon-500/10"
-              >
-                <Emoji symbol="📅" alt="" className="h-6 w-6" />
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-chart-100">
-                    {t("home.daily.title")}
-                  </span>
-                  <span className="block text-xs text-chart-400">{t("home.daily.sub")}</span>
-                </span>
-                <span className="ml-auto text-chart-500">→</span>
-              </Link>
+              <div className="mt-8 space-y-2">
+                {[
+                  ["/daily", "📅", t("home.daily.title"), t("home.daily.sub")],
+                  ["/archive", "🗄️", t("archive.title"), t("archive.lede")],
+                  ["/sets", "🛠️", t("sets.title"), t("sets.lede")],
+                ].map(([href, icon, title, sub]) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="flex items-center gap-3 rounded-xl border border-chart-700 bg-chart-850/60 px-4 py-3 transition-colors hover:border-beacon-500/60 hover:bg-beacon-500/10"
+                  >
+                    <Emoji symbol={icon} alt="" className="h-6 w-6" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-chart-100">
+                        {title}
+                      </span>
+                      <span className="block text-xs text-chart-400">{sub}</span>
+                    </span>
+                    <span className="ml-auto text-chart-500">→</span>
+                  </Link>
+                ))}
+              </div>
             </div>
 
             <Panel className="animate-rise" title={t("home.join.title")}>

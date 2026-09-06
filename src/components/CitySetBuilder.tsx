@@ -37,7 +37,9 @@ const COMMON_COUNTRIES = [
 interface CitySetBuilderProps {
   locked?: boolean;
   inUse?: boolean;
-  onUpload: (name: string, cities: City[]) => void;
+  /** Hand the finished set to a room. Absent outside a lobby, where there is
+   * no room to hand it to and the set is only saved or exported. */
+  onUpload?: (name: string, cities: City[]) => void;
   /** Called after a set is saved, so the picker can refresh its saved list. */
   onSaved?: () => void;
   /** A saved set to edit, or null when building from scratch. When set, the
@@ -439,16 +441,18 @@ const CitySetBuilder = ({
                   >
                     {t("editor.save")}
                   </Button>
-                  <Button
-                    size="sm"
-                    disabled={locked || editTooFew}
-                    onClick={() => {
-                      onUpload(name || editTarget?.name || "Custom set", editCities);
-                      onEditComplete?.();
-                    }}
-                  >
-                    {t("builder.use")}
-                  </Button>
+                  {onUpload && (
+                    <Button
+                      size="sm"
+                      disabled={locked || editTooFew}
+                      onClick={() => {
+                        onUpload(name || editTarget?.name || "Custom set", editCities);
+                        onEditComplete?.();
+                      }}
+                    >
+                      {t("builder.use")}
+                    </Button>
+                  )}
                 </div>
               </div>
             </>
@@ -643,13 +647,15 @@ const CitySetBuilder = ({
                     >
                       {saved ? t("saved.saved") : t("saved.save")}
                     </Button>
-                    <Button
-                      size="sm"
-                      disabled={locked || useTooFew || exporting}
-                      onClick={() => onUpload(resolvedName, handpicked)}
-                    >
-                      {t("builder.use")}
-                    </Button>
+                    {onUpload && (
+                      <Button
+                        size="sm"
+                        disabled={locked || useTooFew || exporting}
+                        onClick={() => onUpload(resolvedName, handpicked)}
+                      >
+                        {t("builder.use")}
+                      </Button>
+                    )}
                   </div>
                 </div>
 

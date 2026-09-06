@@ -7,13 +7,21 @@ import {
   mulberry32,
   rankCitiesFor,
   seedFromString,
+  supportedCategories,
 } from "../../game/cities";
+import { MIN_POOL_SIZE, sanitizeCityPool } from "../../game/citySets";
 import { europeanCities } from "../../game/data/europe";
+import authoredFile from "../../game/data/dailyPuzzles.json";
 
 /**
  * The solo puzzle. Everybody gets the same board on the same day, drawn from
  * one fixed set so that scores are worth comparing, and generated from the date
  * alone so that no server has to remember anything.
+ *
+ * A day can also be hand-authored: `game/data/dailyPuzzles.json` maps a day key
+ * to a board, and anything listed there wins over the draw. The file is
+ * imported rather than fetched, so an authored day costs no round trip and its
+ * absence needs no error path.
  */
 
 /** Day 1 of the daily. Kept fixed so puzzle numbers never shift. */
@@ -23,12 +31,23 @@ const DAY_MS = 86_400_000;
 export const DAILY_CITY_COUNT = 8;
 export const DAILY_SET_ID = "europe";
 
+/** An authored board still has to fit on the same screen as a drawn one. */
+const MAX_AUTHORED_CITIES = 16;
+
 /**
  * The daily always plays the six cards every set can answer. The altitude and
  * area pairs are a room setting, not something to spring on a shared puzzle —
  * and six squares is what makes the result grid readable.
  */
 export const DAILY_CATEGORIES: Category[] = CORE_CATEGORIES;
+
+const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Whether a value is a usable day key. Rejects "2026-02-30" as well as junk. */
+export const isDayKey = (value: unknown): value is string =>
+  typeof value === "string" &&
+  DAY_KEY_PATTERN.test(value) &&
+  !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
 
 /** The UTC day key, e.g. "2026-09-05" — the same one everywhere on earth. */
 export const dayKey = (now: Date = new Date()): string =>
@@ -37,6 +56,26 @@ export const dayKey = (now: Date = new Date()): string =>
 /** Puzzle number for a day key, counting from the epoch. */
 export const puzzleNumber = (key: string): number =>
   Math.round((Date.parse(`${key}T00:00:00Z`) - EPOCH) / DAY_MS) + 1;
+
+/** The day key for a puzzle number — the inverse of `puzzleNumber`. */
+export const keyFromNumber = (number: number): string =>
+  new Date(EPOCH + (number - 1) * DAY_MS).toISOString().slice(0, 10);
+
+/** The key `days` away from `key`, in either direction. */
+export const shiftKey = (key: string, days: number): string =>
+  new Date(Date.parse(`${key}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+
+/** The first day there was a puzzle. Nothing before this is playable. */
+export const FIRST_KEY = keyFromNumber(1);
+
+/** Every playable day, newest first. */
+export const allDayKeys = (today: string): string[] => {
+  const keys: string[] = [];
+  for (let number = puzzleNumber(today); number >= 1; number--) {
+    keys.push(keyFromNumber(number));
+  }
+  return keys;
+};
 
 /** Milliseconds from `now` until the next UTC midnight. */
 export const msUntilNextDay = (now: Date = new Date()): number => {
@@ -48,6 +87,43 @@ export const msUntilNextDay = (now: Date = new Date()): number => {
   return next - now.getTime();
 };
 
+// --- Authored boards -------------------------------------------------------
+
+export interface AuthoredPuzzle {
+  /** A short label for the board, shown next to the date. */
+  note?: string;
+  cities: City[];
+}
+
+/**
+ * The authored days, validated once at module load. An entry that is malformed,
+ * too small, or unable to answer all six cards is dropped rather than thrown —
+ * a bad commit costs that day its custom board, not the whole app.
+ */
+export const AUTHORED: Record<string, AuthoredPuzzle> = (() => {
+  const valid: Record<string, AuthoredPuzzle> = {};
+
+  for (const [key, raw] of Object.entries(authoredFile as Record<string, unknown>)) {
+    if (!isDayKey(key) || !raw || typeof raw !== "object") continue;
+
+    const entry = raw as { note?: unknown; cities?: unknown };
+    const cities = sanitizeCityPool(entry.cities).slice(0, MAX_AUTHORED_CITIES);
+    if (cities.length < MIN_POOL_SIZE) continue;
+
+    const supported = new Set(supportedCategories(cities));
+    if (!DAILY_CATEGORIES.every((category) => supported.has(category))) continue;
+
+    valid[key] = {
+      cities,
+      ...(typeof entry.note === "string" && entry.note.trim()
+        ? { note: entry.note.trim().slice(0, 80) }
+        : {}),
+    };
+  }
+
+  return valid;
+})();
+
 export interface DailyPuzzle {
   key: string;
   number: number;
@@ -55,18 +131,29 @@ export interface DailyPuzzle {
   answers: Partial<Record<Category, City>>;
   /** The city that came second in each category — a "so close" rather than a miss. */
   runnersUp: Record<Category, City | null>;
+  /** Whether this board was hand-authored rather than drawn. */
+  authored: boolean;
+  /** The authored board's label, when it has one. */
+  note?: string;
 }
 
-/** Build (or rebuild) a day's puzzle. Pure: the same key always gives the same board. */
+/**
+ * Build (or rebuild) a day's puzzle. Pure: the same key always gives the same
+ * board. An authored day uses the committed cities; every other day is drawn
+ * from the date alone.
+ */
 export const buildPuzzle = (key: string): DailyPuzzle => {
-  const random = mulberry32(seedFromString(`urban-compass/${key}`));
-  const cities = drawBoard(
-    europeanCities,
-    DAILY_CITY_COUNT,
-    "balanced",
-    random,
-    DAILY_CATEGORIES,
-  );
+  const authored = AUTHORED[key];
+
+  const cities = authored
+    ? authored.cities
+    : drawBoard(
+        europeanCities,
+        DAILY_CITY_COUNT,
+        "balanced",
+        mulberry32(seedFromString(`urban-compass/${key}`)),
+        DAILY_CATEGORIES,
+      );
 
   const runnersUp = {} as Record<Category, City | null>;
   for (const category of DAILY_CATEGORIES) {
@@ -79,6 +166,8 @@ export const buildPuzzle = (key: string): DailyPuzzle => {
     cities,
     answers: getCorrectAnswers(cities, DAILY_CATEGORIES),
     runnersUp,
+    authored: !!authored,
+    ...(authored?.note ? { note: authored.note } : {}),
   };
 };
 
@@ -111,6 +200,11 @@ export interface DailyResult {
   number: number;
   picks: Picks;
   score: number;
+  /**
+   * A day carried over from before per-day history was kept: it was played, but
+   * the picks were not saved. Shown as played, with no result to display.
+   */
+  synthetic?: boolean;
 }
 
 export interface DailyStats {
@@ -118,8 +212,8 @@ export interface DailyStats {
   bestStreak: number;
   played: number;
   totalScore: number;
-  /** Today's finished attempt, if there is one. */
-  last: DailyResult | null;
+  /** Every finished day, keyed by day key. */
+  history: Record<string, DailyResult>;
 }
 
 export const emptyStats = (): DailyStats => ({
@@ -127,13 +221,68 @@ export const emptyStats = (): DailyStats => ({
   bestStreak: 0,
   played: 0,
   totalScore: 0,
-  last: null,
+  history: {},
 });
+
+/**
+ * The run of consecutive days ending today. A day still in play does not break
+ * it — the walk starts at yesterday until today is finished — so catching up on
+ * a day you missed repairs the streak rather than leaving a permanent hole.
+ */
+export const currentStreak = (
+  history: Record<string, DailyResult>,
+  today: string,
+): number => {
+  let cursor = history[today] ? today : shiftKey(today, -1);
+  let streak = 0;
+
+  while (cursor >= FIRST_KEY && history[cursor]) {
+    streak++;
+    cursor = shiftKey(cursor, -1);
+  }
+
+  return streak;
+};
+
+/** The longest run of consecutive days anywhere in the history. */
+const longestRun = (history: Record<string, DailyResult>): number => {
+  let best = 0;
+  let run = 0;
+  let previous: string | null = null;
+
+  for (const key of Object.keys(history).sort()) {
+    run = previous !== null && shiftKey(previous, 1) === key ? run + 1 : 1;
+    if (run > best) best = run;
+    previous = key;
+  }
+
+  return best;
+};
+
+/** Read one stored result, taking the key from the map when there is one. */
+const toResult = (key: string | undefined, value: unknown): DailyResult | null => {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+
+  const resolved = key ?? raw.key;
+  if (!isDayKey(resolved)) return null;
+
+  return {
+    key: resolved,
+    number: Number(raw.number) || puzzleNumber(resolved),
+    picks: (raw.picks && typeof raw.picks === "object" ? raw.picks : {}) as Picks,
+    score: Number(raw.score) || 0,
+    ...(raw.synthetic === true ? { synthetic: true as const } : {}),
+  };
+};
 
 /**
  * Read the saved stats. Anything unreadable — a private window, a browser with
  * storage switched off, a value from an older shape — is treated as a clean
  * slate rather than an error.
+ *
+ * `played` and `totalScore` stay stored counters rather than being derived from
+ * the history, so upgrading from the pre-history shape keeps a player's totals.
  */
 export const loadStats = (): DailyStats => {
   if (typeof window === "undefined") return emptyStats();
@@ -141,22 +290,43 @@ export const loadStats = (): DailyStats => {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return emptyStats();
-    const parsed = JSON.parse(raw) as Partial<DailyStats>;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+    const history: Record<string, DailyResult> = {};
+    if (parsed.history && typeof parsed.history === "object") {
+      for (const [key, value] of Object.entries(parsed.history as Record<string, unknown>)) {
+        const result = toResult(key, value);
+        if (result) history[key] = result;
+      }
+    }
+
+    // The pre-history shape kept one result and a streak counter. Seed the
+    // history from that result, and stand placeholders in for the rest of the
+    // recorded run so the upgrade does not silently reset a live streak.
+    if (Object.keys(history).length === 0) {
+      const last = toResult(undefined, parsed.last);
+      if (last) {
+        history[last.key] = last;
+        for (let back = 1; back < (Number(parsed.streak) || 0); back++) {
+          const key = shiftKey(last.key, -back);
+          if (key < FIRST_KEY) break;
+          history[key] = {
+            key,
+            number: puzzleNumber(key),
+            picks: {},
+            score: 0,
+            synthetic: true,
+          };
+        }
+      }
+    }
 
     return {
-      streak: Number(parsed.streak) || 0,
-      bestStreak: Number(parsed.bestStreak) || 0,
+      history,
       played: Number(parsed.played) || 0,
       totalScore: Number(parsed.totalScore) || 0,
-      last:
-        parsed.last && typeof parsed.last.key === "string"
-          ? {
-              key: parsed.last.key,
-              number: Number(parsed.last.number) || puzzleNumber(parsed.last.key),
-              picks: (parsed.last.picks ?? {}) as Picks,
-              score: Number(parsed.last.score) || 0,
-            }
-          : null,
+      streak: currentStreak(history, dayKey()),
+      bestStreak: Math.max(Number(parsed.bestStreak) || 0, longestRun(history)),
     };
   } catch {
     return emptyStats();
@@ -164,23 +334,22 @@ export const loadStats = (): DailyStats => {
 };
 
 /**
- * Fold a finished attempt into the saved stats. Solving the day after the last
- * one extends the streak, a gap restarts it, and replaying the same day changes
- * nothing — the result is already banked.
+ * Fold a finished attempt into the saved stats. A day that is already banked is
+ * never rewritten — the exception is a synthetic placeholder, which can be
+ * filled in by actually playing that day without counting it a second time.
  */
 export const recordResult = (stats: DailyStats, result: DailyResult): DailyStats => {
-  if (stats.last?.key === result.key) return stats;
+  const existing = stats.history[result.key];
+  if (existing && !existing.synthetic) return stats;
 
-  const consecutive =
-    stats.last !== null && result.number - stats.last.number === 1;
-  const streak = consecutive ? stats.streak + 1 : 1;
+  const history = { ...stats.history, [result.key]: result };
 
   return {
-    streak,
-    bestStreak: Math.max(stats.bestStreak, streak),
-    played: stats.played + 1,
+    history,
+    played: stats.played + (existing ? 0 : 1),
     totalScore: stats.totalScore + result.score,
-    last: result,
+    streak: currentStreak(history, dayKey()),
+    bestStreak: Math.max(stats.bestStreak, longestRun(history)),
   };
 };
 
@@ -197,7 +366,11 @@ export const saveStats = (stats: DailyStats): void => {
 
 const SQUARES: Record<Mark, string> = { hit: "🟩", close: "🟨", miss: "⬛" };
 
-/** The Wordle-style result grid: one square per card, in category order. */
+/**
+ * The Wordle-style result grid: one square per card, in category order. The
+ * link carries the day, so whoever opens it sees the board the squares are
+ * about rather than whatever is current when they get round to it.
+ */
 export const shareText = (
   puzzle: DailyPuzzle,
   picks: Picks,
@@ -212,6 +385,6 @@ export const shareText = (
     `Urban Compass Daily #${puzzle.number} — ${score}/${DAILY_CATEGORIES.length}`,
     squares,
   ];
-  if (origin) lines.push(`${origin}/daily`);
+  if (origin) lines.push(`${origin}/daily/?d=${puzzle.key}`);
   return lines.join("\n");
 };

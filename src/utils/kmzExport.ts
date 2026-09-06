@@ -9,6 +9,7 @@
 // expects), produced entirely in the browser — no dependency.
 
 import { City } from "../../game/cities";
+import { downloadBlob } from "./index";
 
 /** XML-escape the handful of characters that matter in element text. */
 const escapeXml = (value: string): string =>
@@ -188,12 +189,5 @@ const zip = async (filename: string, content: string): Promise<Blob> => {
 export const exportKmz = async (name: string, cities: City[]): Promise<void> => {
   const kml = buildKml(name, cities);
   const blob = await zip("doc.kml", kml);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${name.replace(/[^\w\-]+/g, "_") || "city_set"}.kmz`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `${name.replace(/[^\w\-]+/g, "_") || "city_set"}.kmz`);
 };

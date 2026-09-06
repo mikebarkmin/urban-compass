@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import {
   Category,
   categoryIcons,
@@ -12,11 +13,13 @@ import {
   DAILY_CATEGORIES,
   DAILY_SET_ID,
   DailyStats,
+  FIRST_KEY,
   Mark,
   Picks,
   buildPuzzle,
   dayKey,
   emptyStats,
+  isDayKey,
   loadStats,
   markFor,
   msUntilNextDay,
@@ -24,38 +27,15 @@ import {
   saveStats,
   scorePicks,
   shareText,
+  shiftKey,
 } from "@/utils/daily";
 import { shareOrCopy } from "@/utils";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useLocale } from "@/i18n";
 import { Badge, Button, Panel, cx } from "./ui";
 import { useFixedTopBar } from "./Layout";
+import { MARK_STYLE, MarkSquare } from "./MarkSquare";
 import MiniMap from "./MiniMap";
-
-const MARK_STYLE = {
-  hit: "border-signal-500/60 bg-signal-500/10",
-  close: "border-beacon-500/50 bg-beacon-500/10",
-  miss: "border-chart-700 bg-chart-900/70",
-} as const;
-
-/**
- * The on-page result grid is drawn rather than typed. The 🟩🟨⬛ squares that go
- * into the shared text are missing from a fair number of emoji fonts and fall
- * back to empty boxes, which is fine in a chat app but not on the page itself.
- */
-const MARK_FILL = {
-  hit: "bg-signal-500",
-  close: "bg-beacon-500",
-  miss: "bg-chart-700",
-} as const;
-
-const MarkSquare = ({ mark, size = 14 }: { mark: Mark; size?: number }) => (
-  <span
-    className={cx("inline-block shrink-0 rounded-[3px]", MARK_FILL[mark])}
-    style={{ width: size, height: size }}
-    aria-hidden
-  />
-);
 
 /** A compact stat for the footer strip. */
 const Stat = ({ label, value }: { label: string; value: string | number }) => (
@@ -80,11 +60,14 @@ const formatDuration = (ms: number): string => {
  */
 const Daily = () => {
   const { locale, t } = useLocale();
+  const router = useRouter();
   useFixedTopBar();
 
   // Everything below depends on the date and on localStorage, so the first
   // render is deliberately empty — it keeps the server and client markup in step.
   const [today, setToday] = useState<string | null>(null);
+  /** The day on screen, which is today unless `?d=` says otherwise. */
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const [stats, setStats] = useState<DailyStats>(emptyStats);
   const [picks, setPicks] = useState<Picks>({});
   const [selected, setSelected] = useState<Category | null>(null);
@@ -95,31 +78,47 @@ const Daily = () => {
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
+  // Resolve which day is on screen, and reset the board whenever it changes. A
+  // key that is malformed, before the first puzzle, or in the future falls back
+  // to today rather than erroring — a stale or hand-typed link still plays.
   useEffect(() => {
-    const key = dayKey();
+    if (!router.isReady) return;
+
+    const current = dayKey();
+    const requested = router.query.d;
+    const key =
+      isDayKey(requested) && requested >= FIRST_KEY && requested <= current
+        ? requested
+        : current;
+
     const saved = loadStats();
-    setToday(key);
+    setToday(current);
+    setActiveKey(key);
     setStats(saved);
+    setSelected(null);
+    setCopied(false);
 
-    // Today's puzzle is one-shot: if it is already banked, show that result.
-    if (saved.last?.key === key) {
-      setPicks(saved.last.picks);
-      setRevealed(true);
-    }
-  }, []);
+    // A finished day is one-shot, today's included: show the banked result
+    // rather than a replayable board. A day carried over from before the picks
+    // were kept has nothing to show, so it stays playable.
+    const banked = saved.history[key];
+    const settled = !!banked && !banked.synthetic;
+    setPicks(settled ? banked.picks : {});
+    setRevealed(settled);
+  }, [router.isReady, router.query.d]);
 
-  // Tick down to the next UTC midnight, but only once the puzzle is done —
-  // before that the countdown is noise. Updates each second.
+  // Tick down to the next UTC midnight, but only once today's puzzle is done —
+  // before that the countdown is noise, and on an archive day it is irrelevant.
   useEffect(() => {
-    if (!revealed) return;
+    if (!revealed || activeKey !== today) return;
     setTimeLeft(msUntilNextDay());
     const id = window.setInterval(() => setTimeLeft(msUntilNextDay()), 1000);
     return () => window.clearInterval(id);
-  }, [revealed]);
+  }, [revealed, activeKey, today]);
 
-  const puzzle = useMemo(() => (today ? buildPuzzle(today) : null), [today]);
+  const puzzle = useMemo(() => (activeKey ? buildPuzzle(activeKey) : null), [activeKey]);
 
-  if (!puzzle) {
+  if (!puzzle || !today) {
     return (
       <div className="panel mt-20 grid place-items-center p-16 text-center text-sm text-chart-400">
         {t("daily.loading")}
@@ -131,6 +130,10 @@ const Daily = () => {
   const score = revealed ? scorePicks(puzzle, picks) : 0;
   const ready = placedCount === DAILY_CATEGORIES.length;
   const showBottomBar = revealed || !!selected || ready;
+
+  const isToday = puzzle.key === today;
+  const previousKey = puzzle.number > 1 ? shiftKey(puzzle.key, -1) : null;
+  const nextKey = isToday ? null : shiftKey(puzzle.key, 1);
 
   const assign = (cityId: string) => {
     if (!selected || revealed) return;
@@ -236,11 +239,17 @@ const Daily = () => {
                   selected && !revealed ? "text-chart-800" : "text-chart-400",
                 )}
               >
-                {t("daily.meta", {
-                  date: puzzle.key,
-                  set: t(`set.${DAILY_SET_ID}.name`),
-                  count: puzzle.cities.length,
-                })}
+                {puzzle.authored
+                  ? t("daily.metaAuthored", {
+                      date: puzzle.key,
+                      note: puzzle.note ?? t("daily.authored"),
+                      count: puzzle.cities.length,
+                    })
+                  : t("daily.meta", {
+                      date: puzzle.key,
+                      set: t(`set.${DAILY_SET_ID}.name`),
+                      count: puzzle.cities.length,
+                    })}
               </div>
             </div>
           </div>
@@ -478,7 +487,7 @@ const Daily = () => {
             />
           </div>
 
-          {revealed && (
+          {revealed && isToday && (
             <p className="mt-4 border-t border-chart-800 pt-3 text-xs text-chart-500">
               {t("daily.done")}{" "}
               {timeLeft !== null && (
@@ -490,6 +499,42 @@ const Daily = () => {
               )}
             </p>
           )}
+        </Panel>
+
+        <Panel
+          title={t("archive.title")}
+          subtitle={isToday ? t("archive.sub") : t("daily.playingPast")}
+        >
+          <div className="flex flex-wrap gap-2">
+            {previousKey && (
+              <Link href={{ pathname: "/daily", query: { d: previousKey } }}>
+                <Button variant="secondary" size="sm">
+                  ← {t("daily.previousDay")}
+                </Button>
+              </Link>
+            )}
+            {nextKey && (
+              <Link href={{ pathname: "/daily", query: { d: nextKey } }}>
+                <Button variant="secondary" size="sm">
+                  {t("daily.nextDay")} →
+                </Button>
+              </Link>
+            )}
+            {!isToday && (
+              <Link href="/daily">
+                <Button variant="secondary" size="sm">
+                  {t("daily.backToToday")}
+                </Button>
+              </Link>
+            )}
+          </div>
+
+          <Link
+            href="/archive"
+            className="mt-3 inline-block text-xs text-beacon-400 underline underline-offset-4 hover:text-beacon-300"
+          >
+            {t("archive.browse")}
+          </Link>
         </Panel>
 
         <Panel title={t("daily.multiplayer.title")}>
