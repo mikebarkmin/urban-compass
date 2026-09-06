@@ -18,6 +18,8 @@ and *Zürich* rather than *Athens* and *Zurich*.
 There is also a [solo daily puzzle](#the-daily-puzzle) for when nobody else is
 around.
 
+For implementation details, see [DOCUMENTATION.md](DOCUMENTATION.md).
+
 ## Running it
 
 ```bash
@@ -179,11 +181,6 @@ in the upload preview. `public/europa.kmz` is included as a sample.
 A set can also be exported back out as a KMZ for Google Earth and Maps.
 
 ---
-
-For implementation details — game mechanics in depth, avatars and emoji
-rendering, audio synthesis, deployment and CI, the daily authoring build
-pipeline, internationalisation, and code architecture — see
-[DOCUMENTATION.md](DOCUMENTATION.md).
 
 ## Credits
 
