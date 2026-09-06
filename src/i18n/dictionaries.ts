@@ -394,11 +394,11 @@ export const en = {
   "sets.lede":
     "Build a pool to play with, keep it for later, and lay out a daily board from it. Everything here stays in this browser until you export it.",
 
-  "author.title": "Author a daily",
+  "author.title": "Suggest a daily",
   "author.lede":
-    "Hand-pick the board for a given day. Download the file, commit it, and that day plays your board instead of a drawn one.",
-  "author.new": "New puzzle",
-  "author.none": "No hand-picked days yet.",
+    "Design a board for a day, download the file, and send it in. The daily plays your board if it gets picked.",
+  "author.new": "New suggestion",
+  "author.none": "No drafts yet.",
   "author.edit": "Edit",
   "author.date": "Day",
   "author.dateHint": "Pick a day nobody has played yet.",
@@ -424,13 +424,12 @@ export const en = {
   "author.warnPast":
     "This day may already have been played. Anyone who finished it keeps their result, but the board they see will change.",
   "author.tooFew": "A board needs at least {needed} cities.",
-  "author.save": "Save this day",
+  "author.save": "Save this draft",
   "author.cancel": "Cancel",
   "author.downloadDay": "Download",
-  "author.download": "Download every day",
+  "author.download": "Download all drafts",
   "author.downloadHint":
-    "Each day is one file. Save them into game/data/daily/ and commit — the build picks them up. The site is a static build, so nothing goes live until it is deployed.",
-  "author.reset": "Reset to the committed days",
+    "Each day is one file. Download it and send it in — if it gets picked, it will be added to the daily schedule.",
 
   "miss.km": "{value} km away",
   "miss.people": "{value} people out",
@@ -997,11 +996,11 @@ export const de: Record<MessageKey, string> = {
   "sets.lede":
     "Bau dir einen Pool zum Spielen, heb ihn für später auf und leg daraus ein Tagesfeld an. Alles hier bleibt in diesem Browser, bis du es exportierst.",
 
-  "author.title": "Tagesrätsel anlegen",
+  "author.title": "Tagesrätsel vorschlagen",
   "author.lede":
-    "Stell das Feld für einen bestimmten Tag selbst zusammen. Datei herunterladen, committen — dann spielt dieser Tag dein Feld statt eines gezogenen.",
-  "author.new": "Neues Rätsel",
-  "author.none": "Noch keine handverlesenen Tage.",
+    "Stell ein Feld für einen Tag zusammen, lade die Datei herunter und schick sie ein. Der Tag spielt dein Feld, wenn es ausgewählt wird.",
+  "author.new": "Neuer Vorschlag",
+  "author.none": "Noch keine Entwürfe.",
   "author.edit": "Bearbeiten",
   "author.date": "Tag",
   "author.dateHint": "Nimm einen Tag, den noch niemand gespielt hat.",
@@ -1027,13 +1026,12 @@ export const de: Record<MessageKey, string> = {
   "author.warnPast":
     "Dieser Tag wurde vielleicht schon gespielt. Wer ihn beendet hat, behält sein Ergebnis, aber das Feld, das er sieht, ändert sich.",
   "author.tooFew": "Ein Feld braucht mindestens {needed} Städte.",
-  "author.save": "Tag speichern",
+  "author.save": "Entwurf speichern",
   "author.cancel": "Abbrechen",
   "author.downloadDay": "Herunterladen",
-  "author.download": "Alle Tage herunterladen",
+  "author.download": "Alle Entwürfe herunterladen",
   "author.downloadHint":
-    "Jeder Tag ist eine Datei. Leg sie in game/data/daily/ ab und commite — der Build zieht sie ein. Die Seite ist ein statischer Build — live geht nichts, bevor deployt wurde.",
-  "author.reset": "Auf die committeten Tage zurücksetzen",
+    "Jeder Tag ist eine Datei. Lade sie herunter und schick sie ein — wenn er ausgewählt wird, kommt er in den Tagesplan.",
 
   "miss.km": "{value} km daneben",
   "miss.people": "{value} Einwohner daneben",

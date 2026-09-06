@@ -20,7 +20,6 @@ import {
 } from "@/utils/daily";
 import {
   DailyDrafts,
-  committedDrafts,
   loadDrafts,
   saveDrafts,
   draftFile,
@@ -616,9 +615,6 @@ const DailyAuthor = () => {
         <div className="mt-2 flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" onClick={downloadAll}>
             {t("author.download")}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => persist(committedDrafts())}>
-            {t("author.reset")}
           </Button>
         </div>
       </div>

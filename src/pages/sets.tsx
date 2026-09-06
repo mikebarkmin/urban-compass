@@ -12,7 +12,7 @@ import { Glyph } from "@/components/Glyph";
 
 /**
  * The city-set workshop, outside any room. The same builder the lobby uses,
- * plus the saved sets it writes to and the daily authoring panel that draws
+ * plus the saved sets it writes to and the daily suggestion panel that draws
  * boards out of them. Nothing here needs a room, so it does not ask for one.
  */
 export default function SetsPage() {
