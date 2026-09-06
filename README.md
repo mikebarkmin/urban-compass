@@ -63,60 +63,9 @@ of them; turn one on when the table wants more to argue about.
 | **Power-ups** | Once a round, spend a turn moving one of your placed chips to another city. |
 | **Runner-up consolation** | The first player to bet a category's runner-up city banks 1 point. |
 
-**Cancel matching bets** is the one that makes the headline mechanic matter.
-Without it the visible chips are atmosphere: seeing three players on Tromsø
-changes nothing you would do. With it, a crowded city is a reason to look
-elsewhere, and being right on your own is worth more than being right.
-
-**The 2× card** is public — the chip on the board shows it — which is the point.
-It says somebody is sure without saying what about, and with steals on it paints
-a target: the confident bets are the ones worth calling.
-
-**Steals** put the hidden information in play directly. On your turn, instead of
-placing, you name a player, a city and a card. Get it right and you take the bet
-*and its place in the queue*, so you inherit the payout it would have earned;
-the victim's card is gone rather than returned. Get it wrong and your own card
-burns, and the whole table now knows what that city is *not*. A 2× does not
-travel with a stolen bet — that was the other player's gamble.
-
-**Doubts** are the bluffer's read. A steal makes you name the card; a doubt does
-not. You pick a player and a city and assert that their bet there is a mistake.
-The server knows the answers (the clients do not), so it resolves the call
-without leaking anything: if every card the target laid on that city is wrong,
-you bank 2 points for the reveal; if any one of them is right, your own card
-burns. It is the lighter, noisier cousin of a steal — you never have to commit
-to a category, which makes it the move to make when three chips are piled on the
-obvious outlier and you suspect the pile is wrong.
-
-**Power-ups** give you a take-back. Once a round, instead of placing, you move
-one of your already-placed chips to another city. The chip is still face-down,
-so opponents see *that* you moved it, never *what* it was — a loud, public tell
-that says you changed your mind without saying about what. A swap re-enters the
-destination queue at the back, so moving late costs you placement priority: the
-trade for getting to watch everyone else bet first.
-
-**Runner-up consolation** pays 1 point to the earliest player who bet a
-category's runner-up city, so a near miss is not worth nothing. It gives the
-player who almost had it something to chase late in a round, and it makes the
-second-best read matter on sets where the outlier is obvious.
-
-Cards lost this way still count against your hand, so a round always ends: the
-reducer's fuzz tests play 300 games with every mechanic on and none of them
-runs long.
-
-**What a turn offers** follows from these switches. The action box lists only
-what the room actually plays with — steals, doubts and power-ups appear because
-they were turned on, not greyed out because they were not. Each one carries its
-stake: what it pays when it lands and what it costs when it does not, so the
-choice between calling a bet and doubting one is a read on the table rather than
-a guess about the rules. Placing shows the live miss penalty, so the same tile
-says something different in a room that docks 2 points than in one that docks
-nothing. Sitting out is on the
-same footing: it is only a real choice when a miss costs points, so it is
-offered when **cost of a miss** is set and left out otherwise, rather than
-sitting there as a strictly worse move. And in a default room, where none of
-this is on, placing a card is the only thing a turn can be spent on — so there
-is no box at all and the hand is live the moment your turn comes round.
+The action box only shows mechanics the room actually plays with, each carrying
+its stake upfront. In a default room, placing a card is the only thing a turn can
+be spent on.
 
 ### The cards
 
@@ -142,17 +91,8 @@ Jericho sits at −258 m. Area is the specialist — it needs an administrative
 figure that only makes sense for a real city, which is why the two "far corners"
 sets carry altitude but not area.
 
-The gating is all-or-nothing per set on purpose. A pool where half the cities
-have an elevation would quietly hand "lowest" to whichever city was missing one,
-so `categorySupported` requires the whole pool, and a set switch re-filters the
-room's selection back to what the new pool can answer.
-
-A card in hand is drawn as a card: `CategoryCard` puts an index pip in two
-opposing corners, the glyph on a ring in the middle, the criterion underneath
-and, at the foot, the city it was played on. The board and the daily share the
-component, so a card means the same thing in both — amber for the one in your
-hand right now, teal for one already committed, and the daily's green/amber/grey
-grading once the answers are out.
+The gating is all-or-nothing per set: a pool where half the cities have an
+elevation would quietly hand "lowest" to whichever city was missing one.
 
 ### How long a game lasts
 
@@ -172,38 +112,16 @@ to give them their turn at the front.
 
 ### The turn clock
 
-Clocks live on the server, in `party/index.ts`. A backgrounded tab or a closed
-laptop cannot stall the table, and a client cannot fake the expiry to skip past
-somebody — `turn_timeout` is deliberately missing from `CLIENT_ACTION_TYPES`.
-Broadcasts carry a `serverNow` stamp that clients offset against, so the
-countdown agrees with the room even when a player's own clock is minutes out.
-
-One expired turn is skipped; a second takes that player out of the round, which
-also stops a table of idle players looping forever.
-
-`useWakeLock` holds the screen awake while a turn is live — a phone dimming
-mid-round costs more here than in most apps, because the turn clock keeps
-running behind the lock screen. Browsers drop the lock whenever the tab is
-hidden, so it is re-acquired on the way back. Where the API is missing or the
-request is refused, the screen behaves as it normally would.
+The turn clock runs on the server, so a backgrounded tab or a closed laptop
+cannot stall the table. One expired turn is skipped; a second takes that player
+out of the round.
 
 ### The board draw
 
-A uniform random draw is a worse game than it looks. Sampling 20,000 boards of
-eight cities:
-
-| Set    | Distinct answer cities (of 6) | One city answers 2+ | One city answers 3+ |
-| ------ | ----------------------------- | ------------------- | ------------------- |
-| Europe | 4.44                          | 92%                 | 17%                 |
-| World  | 4.17                          | 97%                 | 34%                 |
-
-One outlier — Reykjavík, Papeete, Tromsø — routinely takes three of the six
-categories, which collapses six decisions into four and makes "pile everything
-onto the obvious city" the whole game.
-
-The **balanced** draw in `drawBoard` rejection-samples for a board whose six
-answers are six *different* cities, which it reaches in under a millisecond and
-for effectively every board size. `random` keeps the old behaviour if you want it.
+A uniform random draw lets one outlier city routinely take three of the six
+categories, which collapses the game. The **balanced** draw rejection-samples
+for a board whose six answers are six *different* cities. `random` keeps the
+old behaviour if you want it.
 
 ## The daily puzzle
 
@@ -262,9 +180,10 @@ A set can also be exported back out as a KMZ for Google Earth and Maps.
 
 ---
 
-For implementation details — avatars and emoji rendering, audio synthesis,
-deployment and CI, the daily authoring build pipeline, internationalisation, and
-code architecture — see [DOCUMENTATION.md](DOCUMENTATION.md).
+For implementation details — game mechanics in depth, avatars and emoji
+rendering, audio synthesis, deployment and CI, the daily authoring build
+pipeline, internationalisation, and code architecture — see
+[DOCUMENTATION.md](DOCUMENTATION.md).
 
 ## Credits
 
