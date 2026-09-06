@@ -27,6 +27,7 @@ import {
   scorePicks,
   shareText,
   shiftKey,
+  themeLabel,
 } from "@/utils/daily";
 import { shareOrCopy } from "@/utils";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -228,7 +229,7 @@ const Daily = () => {
                   selected && !revealed ? "text-chart-950" : "text-chart-100",
                 )}
               >
-                {t("daily.title", { number: puzzle.number })}
+                {themeLabel(puzzle.theme, locale) ?? t("daily.title", { number: puzzle.number })}
                 {revealed && (
                   <span className="ml-2 text-beacon-400">
                     {score}/{DAILY_CATEGORIES.length}
@@ -243,8 +244,8 @@ const Daily = () => {
               >
                 {puzzle.authored
                   ? t("daily.metaAuthored", {
+                      number: puzzle.number,
                       date: puzzle.key,
-                      note: puzzle.note ?? t("daily.authored"),
                       count: puzzle.cities.length,
                     })
                   : t("daily.meta", {

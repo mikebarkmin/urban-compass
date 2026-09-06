@@ -62,6 +62,14 @@ jobs:
 
       - run: npm ci
 
+      # Joins the authored boards with the gazetteer and checks each one is
+      # still playable. A gazetteer refresh can move a board's answers, so the
+      # six answers per day are printed: a diff of this step is how a change
+      # shows up. Fails on a tie, a repeated city or name, or a board whose six
+      # cards no longer have six different answers.
+      - name: Check the daily boards
+        run: npm run check:daily
+
       - name: Build
         run: npm run build
         env:

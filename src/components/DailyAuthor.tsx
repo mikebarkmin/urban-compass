@@ -16,13 +16,15 @@ import {
   dayKey,
   isDayKey,
   shiftKey,
+  themeLabel,
 } from "@/utils/daily";
 import {
   DailyDrafts,
   committedDrafts,
   loadDrafts,
   saveDrafts,
-  serializeDrafts,
+  draftFile,
+  draftFiles,
 } from "@/data/dailyDrafts";
 import { SavedCitySet, loadSavedSets } from "@/data/savedSets";
 import { loadCities } from "@/data/citiesLoader";
@@ -86,10 +88,10 @@ interface Source {
 }
 
 /**
- * Hand-author a day's board. The panel edits the contents of
- * `game/data/dailyPuzzles.json` and hands the finished file back as a download;
- * committing it is what puts the puzzle live, since the site is a static build
- * with nowhere to write to at runtime.
+ * Hand-author a day's board. The panel edits what lives in `game/data/daily/`
+ * and hands each day back as its own download; committing those files is what
+ * puts a puzzle live, since the site is a static build with nowhere to write to
+ * at runtime.
  */
 const DailyAuthor = () => {
   const { locale, t } = useLocale();
@@ -102,7 +104,8 @@ const DailyAuthor = () => {
   // moves the puzzle rather than leaving a copy behind on the old day.
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [originalKey, setOriginalKey] = useState<string | null>(null);
-  const [note, setNote] = useState("");
+  const [themeEn, setThemeEn] = useState("");
+  const [themeDe, setThemeDe] = useState("");
   const [board, setBoard] = useState<City[]>([]);
   const [sourceId, setSourceId] = useState(CITY_SETS[0].id);
   const [search, setSearch] = useState("");
@@ -159,7 +162,8 @@ const DailyAuthor = () => {
     const key = nextFreeKey(today);
     setEditingKey(key);
     setOriginalKey(null);
-    setNote("");
+    setThemeEn("");
+    setThemeDe("");
     setBoard([]);
     setSearch("");
   };
@@ -167,7 +171,8 @@ const DailyAuthor = () => {
   const startEdit = (key: string) => {
     setEditingKey(key);
     setOriginalKey(key);
-    setNote(drafts[key].note ?? "");
+    setThemeEn(drafts[key].theme?.en ?? "");
+    setThemeDe(drafts[key].theme?.de ?? "");
     setBoard([...drafts[key].cities]);
     setSearch("");
   };
@@ -191,9 +196,13 @@ const DailyAuthor = () => {
 
     const next = { ...drafts };
     if (originalKey && originalKey !== editingKey) delete next[originalKey];
+    // German alone is not enough: English is what every other reader falls
+    // back to, so a theme without it is dropped rather than half-shown.
+    const en = themeEn.trim().slice(0, 80);
+    const de = themeDe.trim().slice(0, 80);
     next[editingKey] = {
       cities: board,
-      ...(note.trim() ? { note: note.trim().slice(0, 80) } : {}),
+      ...(en ? { theme: { en, ...(de ? { de } : {}) } } : {}),
     };
     persist(next);
     cancel();
@@ -296,12 +305,14 @@ const DailyAuthor = () => {
     }, {});
   }, [preview]);
 
-  const download = () => {
-    downloadBlob(
-      new Blob([serializeDrafts(drafts)], { type: "application/json" }),
-      "dailyPuzzles.json",
-    );
-  };
+  const save1 = ({ filename, contents }: { filename: string; contents: string }) =>
+    downloadBlob(new Blob([contents], { type: "application/json" }), filename);
+
+  /**
+   * A day is a file now, so the whole set comes out as separate downloads. The
+   * browser will ask once whether it may save several at a time.
+   */
+  const downloadAll = () => draftFiles(drafts).forEach(save1);
 
   if (!today) return null;
 
@@ -339,7 +350,9 @@ const DailyAuthor = () => {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm text-chart-100">{key}</span>
-                  {drafts[key].note && <Badge tone="muted">{drafts[key].note}</Badge>}
+                  {themeLabel(drafts[key].theme, locale) && (
+                    <Badge tone="muted">{themeLabel(drafts[key].theme, locale)}</Badge>
+                  )}
                   {key <= today && <Badge tone="beacon">{t("author.datePast")}</Badge>}
                 </div>
                 <div className="text-[11px] text-chart-500">
@@ -347,6 +360,13 @@ const DailyAuthor = () => {
                 </div>
               </div>
               <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => save1(draftFile(key, drafts[key]))}
+                >
+                  {t("author.downloadDay")}
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => startEdit(key)}>
                   {t("author.edit")}
                 </Button>
@@ -371,13 +391,22 @@ const DailyAuthor = () => {
                 onChange={(event) => setEditingKey(event.target.value)}
               />
             </Field>
-            <Field label={t("author.note")}>
+            <Field label={t("author.theme.en")}>
               <input
                 className={inputClass}
-                value={note}
+                value={themeEn}
                 maxLength={80}
-                placeholder={t("author.notePlaceholder")}
-                onChange={(event) => setNote(event.target.value)}
+                placeholder={t("author.theme.enPlaceholder")}
+                onChange={(event) => setThemeEn(event.target.value)}
+              />
+            </Field>
+            <Field label={t("author.theme.de")}>
+              <input
+                className={inputClass}
+                value={themeDe}
+                maxLength={80}
+                placeholder={t("author.theme.dePlaceholder")}
+                onChange={(event) => setThemeDe(event.target.value)}
               />
             </Field>
           </div>
@@ -585,7 +614,7 @@ const DailyAuthor = () => {
       <div className="mt-4 border-t border-chart-800 pt-3">
         <p className="text-xs text-chart-500">{t("author.downloadHint")}</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" onClick={download}>
+          <Button variant="secondary" size="sm" onClick={downloadAll}>
             {t("author.download")}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => persist(committedDrafts())}>

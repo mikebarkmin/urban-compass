@@ -279,6 +279,78 @@ The emoji squares are for the copied text, where they render in any chat app. Th
 grid on the page itself is drawn in CSS — those glyphs are missing from a fair
 number of emoji fonts and fall back to empty boxes.
 
+### Hand-authored days
+
+A day can be written rather than drawn. `game/data/daily/` holds **one file per
+day**, named for the date and what the board is about, and anything in there
+wins over the draw:
+
+```
+game/data/daily/
+  2026-09-19-oktoberfest-bavaria.json
+  2026-09-23-equinox-around-the-equator.json
+```
+
+```json
+{
+  "day": "2026-09-19",
+  "theme": { "en": "Oktoberfest — Bavaria", "de": "Oktoberfest — Bayern" },
+  "cities": ["2867714", "2855328", "2849483", "2861650"]
+}
+```
+
+A board names its cities by **geonames id alone**. The figures live in
+`public/cities5000.json` and nowhere else, so a corrected population or a newly
+translated name reaches every board that uses that city without anyone editing
+a puzzle. The day is inside the file as well as in its name, so the file is
+self-describing and the name is free to say what the board is about.
+
+`scripts/build-daily.mjs` joins the two: it reads every file in the directory —
+the directory *is* the list, there is no index to keep in step — expands each id
+against the gazetteer, and writes `game/data/dailyBoards.generated.json`, which
+`src/utils/daily.ts` imports. `next.config.js` runs it, so every `next dev` and
+`next build` does the join and there is no step to remember; an id that is not
+in the gazetteer throws and fails the build rather than shipping a broken day.
+The generated file is not committed. Adding a day means dropping a file in.
+
+Because the join happens at build time rather than in the browser, an authored
+day still costs no round trip: `/daily` never fetches the 1.45 MB gazetteer,
+which only the authoring tools on `/sets` pull. The trade is that a gazetteer
+refresh can move an answer on a board somebody has already played, so
+`npm run check:daily` prints the six answers for every board — a diff of that
+output is how you notice — and fails on anything that would make a board
+unplayable: fewer than four cities, the same city or the same *name* twice
+(the board shows a name and nothing else), a tie for a card, or six cards
+answered by fewer than six cities. CI runs it before the build, so a board that
+has stopped working stops the deploy rather than shipping.
+
+The **theme** is the puzzle's title, in place of "Daily #262", with the number
+moving down to the line beneath it. English is required, because it is what
+every other reader falls back to; German is optional and falls back to the
+English. A bare string is still read as English-only, which is what drafts
+written before the field could be translated look like.
+
+Each entry is validated once at load and a bad one is *dropped* rather than
+thrown: a day that is malformed, too small, or unable to answer all six cards
+falls back to the drawn board rather than taking the app down. Build one in
+`/sets` → **Daily puzzle**, which writes the file for you to commit — a day at a
+time, or all of them at once.
+
+Thirty-three days are committed, every Wednesday and Saturday from 9 September
+to the end of 2026 — rivers (the Danube, the Rhine, the Nile, the
+Trans-Siberian line beside them), waters (Hanseatic and Mediterranean ports, the
+Great Lakes, the mouths of the great rivers), latitudes (the equator at the
+equinox, the far north, the far south, Christmas in the southern summer) and
+dates that carry their own theme (Mexican Independence Day, Oktoberfest, German
+Unity Day, UN Day, Halloween, the Iron Curtain around 9 November, Thanksgiving,
+the Advent markets, and where the new year begins).
+
+Each was picked so that the six cards are answered by six *different* cities —
+the bar `drawBoard`'s balanced draw sets for itself — and so that no two cities
+on a board share a name. Where a theme could not meet that bar it was re-cut
+rather than shipped: New England alone puts both the northern and the eastern
+answer in Maine, so Thanksgiving became the Pilgrims' crossing instead.
+
 ## City sets
 
 The host chooses what everyone guesses from. Sets are grouped by how much

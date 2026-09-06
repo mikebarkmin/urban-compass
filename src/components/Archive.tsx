@@ -12,6 +12,7 @@ import {
   loadStats,
   markFor,
   puzzleNumber,
+  themeLabel,
 } from "@/utils/daily";
 import { useLocale } from "@/i18n";
 import { Badge, Panel, cx } from "./ui";
@@ -185,7 +186,7 @@ const Archive = () => {
                       {isToday && <Badge tone="beacon">{t("archive.today")}</Badge>}
                       {authored && (
                         <Badge tone="muted">
-                          {AUTHORED[key].note ?? t("daily.authored")}
+                          {themeLabel(AUTHORED[key].theme, locale) ?? t("daily.authored")}
                         </Badge>
                       )}
                     </div>

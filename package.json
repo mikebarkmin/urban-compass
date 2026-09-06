@@ -9,6 +9,8 @@
     "start": "npx serve@latest out",
     "lint": "next lint",
     "build:cities": "node scripts/build-cities.mjs",
+    "build:daily": "node scripts/build-daily.mjs",
+    "check:daily": "npm run build:daily && node scripts/check-daily.mjs",
     "deploy:server": "partykit deploy"
   },
   "dependencies": {

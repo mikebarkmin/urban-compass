@@ -6,6 +6,18 @@
  */
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
+// Join the hand-authored daily boards with the gazetteer before anything is
+// compiled, so `game/data/dailyBoards.generated.json` is always in step with
+// `game/data/daily/` and `public/cities5000.json`. Running it here means every
+// `next dev` and `next build` does it — there is no step to forget, and no
+// index file listing the boards by hand. A bad board id throws, which fails
+// the build rather than shipping a broken day.
+require("node:child_process").execFileSync(
+  process.execPath,
+  [require("node:path").join(__dirname, "scripts", "build-daily.mjs")],
+  { stdio: "inherit" },
+);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,

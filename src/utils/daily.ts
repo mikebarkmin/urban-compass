@@ -11,17 +11,19 @@ import {
 } from "../../game/cities";
 import { MIN_POOL_SIZE, sanitizeCityPool } from "../../game/citySets";
 import { europeanCities } from "../../game/data/europe";
-import authoredFile from "../../game/data/dailyPuzzles.json";
+import authoredDays from "../../game/data/dailyBoards.generated.json";
 
 /**
  * The solo puzzle. Everybody gets the same board on the same day, drawn from
  * one fixed set so that scores are worth comparing, and generated from the date
  * alone so that no server has to remember anything.
  *
- * A day can also be hand-authored: `game/data/dailyPuzzles.json` maps a day key
- * to a board, and anything listed there wins over the draw. The file is
- * imported rather than fetched, so an authored day costs no round trip and its
- * absence needs no error path.
+ * A day can also be hand-authored: `game/data/daily/` holds one file per board,
+ * and anything in there wins over the draw. Those files name their cities by
+ * geonames id; the build joins them against the gazetteer into
+ * `dailyBoards.generated.json`, which is what this imports. The join happens at
+ * build time rather than in the browser, so an authored day still costs no
+ * round trip and its absence needs no error path.
  */
 
 /** Day 1 of the daily. Kept fixed so puzzle numbers never shift. */
@@ -89,36 +91,77 @@ export const msUntilNextDay = (now: Date = new Date()): number => {
 
 // --- Authored boards -------------------------------------------------------
 
+/**
+ * What a hand-authored board is about, in the languages it has been written
+ * in. English is required because it is the fallback everywhere else in the
+ * app; a missing German reading falls back to it rather than to the key.
+ */
+export interface Theme {
+  en: string;
+  de?: string;
+}
+
+/** The theme as this reader should see it, the way `cityName` picks a name. */
+export const themeLabel = (theme: Theme | undefined, locale: string): string | undefined =>
+  theme && (locale === "de" && theme.de ? theme.de : theme.en);
+
 export interface AuthoredPuzzle {
-  /** A short label for the board, shown next to the date. */
-  note?: string;
+  /** What the board is about. Shown as the puzzle's title. */
+  theme?: Theme;
   cities: City[];
 }
 
 /**
+ * Read a theme off a raw entry. `{ en, de }` is the shape to write; a bare
+ * string is accepted as English-only, which is what drafts saved before the
+ * field was translatable look like.
+ */
+const readTheme = (raw: unknown): Theme | undefined => {
+  const clean = (value: unknown): string | undefined => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim().slice(0, 80);
+    return trimmed || undefined;
+  };
+
+  if (typeof raw === "string") {
+    const en = clean(raw);
+    return en ? { en } : undefined;
+  }
+  if (!raw || typeof raw !== "object") return undefined;
+
+  const { en, de } = raw as { en?: unknown; de?: unknown };
+  const english = clean(en);
+  if (!english) return undefined;
+  const german = clean(de);
+  return { en: english, ...(german ? { de: german } : {}) };
+};
+
+/**
  * The authored days, validated once at module load. An entry that is malformed,
  * too small, or unable to answer all six cards is dropped rather than thrown —
- * a bad commit costs that day its custom board, not the whole app.
+ * a bad commit costs that day its custom board, not the whole app. Two files
+ * claiming the same day is the same kind of mistake: the first one listed wins.
  */
 export const AUTHORED: Record<string, AuthoredPuzzle> = (() => {
   const valid: Record<string, AuthoredPuzzle> = {};
 
-  for (const [key, raw] of Object.entries(authoredFile as Record<string, unknown>)) {
-    if (!isDayKey(key) || !raw || typeof raw !== "object") continue;
+  for (const raw of authoredDays) {
+    if (!raw || typeof raw !== "object") continue;
+    const { day } = raw as { day?: unknown };
+    if (!isDayKey(day) || valid[day]) continue;
+    const key = day;
 
-    const entry = raw as { note?: unknown; cities?: unknown };
+    const entry = raw as { theme?: unknown; note?: unknown; cities?: unknown };
     const cities = sanitizeCityPool(entry.cities).slice(0, MAX_AUTHORED_CITIES);
     if (cities.length < MIN_POOL_SIZE) continue;
 
     const supported = new Set(supportedCategories(cities));
     if (!DAILY_CATEGORIES.every((category) => supported.has(category))) continue;
 
-    valid[key] = {
-      cities,
-      ...(typeof entry.note === "string" && entry.note.trim()
-        ? { note: entry.note.trim().slice(0, 80) }
-        : {}),
-    };
+    // `note` is what the field was called before it could be translated.
+    const theme = readTheme(entry.theme ?? entry.note);
+
+    valid[key] = { cities, ...(theme ? { theme } : {}) };
   }
 
   return valid;
@@ -133,8 +176,8 @@ export interface DailyPuzzle {
   runnersUp: Record<Category, City | null>;
   /** Whether this board was hand-authored rather than drawn. */
   authored: boolean;
-  /** The authored board's label, when it has one. */
-  note?: string;
+  /** What an authored board is about, when it says. */
+  theme?: Theme;
 }
 
 /**
@@ -167,7 +210,7 @@ export const buildPuzzle = (key: string): DailyPuzzle => {
     answers: getCorrectAnswers(cities, DAILY_CATEGORIES),
     runnersUp,
     authored: !!authored,
-    ...(authored?.note ? { note: authored.note } : {}),
+    ...(authored?.theme ? { theme: authored.theme } : {}),
   };
 };
 
