@@ -87,24 +87,10 @@ export const SCORING_VALUES: Record<number, number> = {
   3: 1, // Third
 };
 
-// Category display names
-/**
- * Card glyphs. Deliberately plain geometric shapes and arrows rather than
- * emoji: the medal and coloured-square emoji turned out to be missing from
- * common fonts, and a card that renders as an empty box is unplayable.
- */
-export const categoryIcons: Record<Category, string> = {
-  northernmost: "↑",
-  southernmost: "↓",
-  easternmost: "→",
-  westernmost: "←",
-  most_population: "▲",
-  least_population: "▼",
-  highest: "⇧",
-  lowest: "⇩",
-  largest_area: "■",
-  smallest_area: "□",
-};
+// Card glyphs are not here: they are drawn as SVG paths by the client, in
+// `src/components/Glyph.tsx`. They used to be Unicode characters, but the
+// double arrows and the geometric shapes are missing from common fonts and
+// fell back to an empty box — and a card that renders as a box is unplayable.
 
 /**
  * What each category measures, and which end of it wins. `dir: 1` means the

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { LogEntry } from "../../game/logic";
-import { ALL_CATEGORIES, Category, categoryIcons } from "../../game/cities";
+import { ALL_CATEGORIES, Category } from "../../game/cities";
 import { useLocale } from "@/i18n";
 import { useSound } from "@/hooks/useSound";
 import { EmojiText } from "@/components/Emoji";
 import { cx } from "./ui";
+import { CategoryIcon } from "./Glyph";
 
 /**
  * The four log keys worth interrupting for, and whether each one landed. A
@@ -137,9 +138,7 @@ const ActionFlash = ({ log }: { log: LogEntry[] }) => {
         >
           <div className="flex items-center justify-center gap-2 font-display text-xl font-bold">
             {flash.category && (
-              <span aria-hidden className="text-2xl">
-                {categoryIcons[flash.category]}
-              </span>
+              <CategoryIcon category={flash.category} className="text-2xl" />
             )}
             {t(headline)}
           </div>

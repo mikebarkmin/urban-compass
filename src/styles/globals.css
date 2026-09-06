@@ -279,6 +279,25 @@
     transform: rotateY(180deg);
   }
 
+  /* The face of a card in hand: a hairline keyline inside the border and a
+     faint sheen off the top edge, so a card reads as printed stock rather
+     than as a rectangle with an icon in it. */
+  .card-face {
+    background-image: radial-gradient(
+      120% 80% at 50% -20%,
+      color-mix(in oklab, var(--color-chart-400) 14%, transparent),
+      transparent 65%
+    );
+  }
+  .card-face::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: 0.55rem;
+    border: 1px solid color-mix(in oklab, var(--color-chart-400) 16%, transparent);
+    pointer-events: none;
+  }
+
   /* The compass-rose pattern on a card back. */
   .card-back {
     background-color: color-mix(in oklab, var(--color-chart-850) 90%, transparent);

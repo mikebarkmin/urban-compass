@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { Emoji } from "@/components/Emoji";
 import {
   Category,
-  categoryIcons,
   cityName,
   formatCoordinate,
   formatPopulation,
@@ -37,6 +35,9 @@ import { Badge, Button, Panel, cx } from "./ui";
 import { useFixedTopBar } from "./Layout";
 import { MARK_STYLE, MarkSquare } from "./MarkSquare";
 import MiniMap from "./MiniMap";
+import { EmojiText } from "./Emoji";
+import { CategoryIcon, Glyph } from "./Glyph";
+import CategoryCard from "./CategoryCard";
 
 /** A compact stat for the footer strip. */
 const Stat = ({ label, value }: { label: string; value: string | number }) => (
@@ -218,7 +219,7 @@ const Daily = () => {
                   : "border-chart-700 text-chart-400 hover:bg-chart-800 hover:text-chart-200",
               )}
             >
-              <Emoji symbol="←" className="h-4 w-4" />
+              <Glyph name="arrow-left" />
             </Link>
             <div className="min-w-0">
               <div
@@ -304,42 +305,27 @@ const Daily = () => {
               const mark = revealed ? markFor(puzzle, category, cityId) : null;
 
               return (
-                <button
+                <CategoryCard
                   key={category}
-                  type="button"
+                  category={category}
+                  label={t(`card.${category}.short`)}
                   disabled={revealed}
                   onClick={() => setSelected(isSelected ? null : category)}
+                  tone={mark ?? (isSelected ? "selected" : cityId ? "filled" : "idle")}
                   className={cx(
-                    "rounded-xl border px-3 py-3 text-left transition-all sm:w-[104px]",
-                    mark
-                      ? MARK_STYLE[mark]
-                      : isSelected
-                        ? "-translate-y-1 border-beacon-500 bg-beacon-500/15 shadow-lg shadow-beacon-500/20"
-                        : cityId
-                          ? "border-chart-500 bg-chart-800 hover:-translate-y-0.5"
-                          : "border-chart-600 bg-chart-850 hover:-translate-y-0.5 hover:border-chart-400",
+                    !revealed && !isSelected && "hover:-translate-y-0.5",
+                    !revealed && !isSelected && !cityId && "hover:border-chart-400",
                   )}
-                >
-                  <span
-                    className={cx(
-                      "font-display text-2xl leading-none",
-                      isSelected ? "text-beacon-400" : "text-chart-400",
-                    )}
-                  >
-                    {categoryIcons[category]}
-                  </span>
-                  <span className="mt-2 block text-xs leading-tight font-medium text-chart-200">
-                    {t(`card.${category}.short`)}
-                  </span>
-                  <span
-                    className={cx(
-                      "mt-1.5 block truncate text-[10px]",
-                      city ? "text-chart-300" : "text-chart-600",
-                    )}
-                  >
-                    {city ? <><Emoji symbol="→" className="h-3 w-3" /> {cityName(city, locale)}</> : t("daily.notPlaced")}
-                  </span>
-                </button>
+                  footer={
+                    city ? (
+                      <span className="text-chart-300">
+                        <Glyph name="arrow-right" /> {cityName(city, locale)}
+                      </span>
+                    ) : (
+                      <span className="text-chart-600">{t("daily.notPlaced")}</span>
+                    )
+                  }
+                />
               );
             })}
           </div>
@@ -396,7 +382,7 @@ const Daily = () => {
                               : "beacon"
                           }
                         >
-                          {categoryIcons[category]}
+                          <CategoryIcon category={category} />
                         </Badge>
                       ))
                     )}
@@ -429,7 +415,7 @@ const Daily = () => {
                     className={cx("animate-rise rounded-xl border p-3", MARK_STYLE[mark])}
                   >
                     <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-chart-400 uppercase">
-                      <span className="text-beacon-500">{categoryIcons[category]}</span>
+                      <CategoryIcon category={category} className="text-beacon-500" />
                       {t(`card.${category}`)}
                       <span className="ml-auto flex items-center">
                         <MarkSquare mark={mark} />
@@ -510,14 +496,14 @@ const Daily = () => {
             {previousKey && (
               <Link href={{ pathname: "/daily", query: { d: previousKey } }}>
                 <Button variant="secondary" size="sm">
-                  <Emoji symbol="←" className="h-4 w-4" /> {t("daily.previousDay")}
+                  <Glyph name="arrow-left" /> {t("daily.previousDay")}
                 </Button>
               </Link>
             )}
             {nextKey && (
               <Link href={{ pathname: "/daily", query: { d: nextKey } }}>
                 <Button variant="secondary" size="sm">
-                  {t("daily.nextDay")} <Emoji symbol="→" className="h-4 w-4" />
+                  {t("daily.nextDay")} <Glyph name="arrow-right" />
                 </Button>
               </Link>
             )}
@@ -534,7 +520,7 @@ const Daily = () => {
             href="/archive"
             className="mt-3 inline-block text-xs text-beacon-400 underline underline-offset-4 hover:text-beacon-300"
           >
-            {t("archive.browse")}
+            <EmojiText text={t("archive.browse")} />
           </Link>
         </Panel>
 
@@ -542,7 +528,7 @@ const Daily = () => {
           <p className="text-xs text-chart-400">{t("daily.multiplayer.body")}</p>
           <Link href="/" className="mt-3 inline-block">
             <Button variant="secondary" size="sm">
-              {t("daily.multiplayer.cta")}
+              <EmojiText text={t("daily.multiplayer.cta")} />
             </Button>
           </Link>
         </Panel>
@@ -559,7 +545,7 @@ const Daily = () => {
             <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-2.5">
               {selected && !revealed && (
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-chart-950/20 bg-chart-950/10 px-2.5 py-1 text-sm font-semibold text-chart-950">
-                  <span className="text-base">{categoryIcons[selected]}</span>
+                  <CategoryIcon category={selected} className="text-base" />
                   {t(`card.${selected}.short`)}
                 </span>
               )}
@@ -597,7 +583,7 @@ const Daily = () => {
                   onClick={share}
                   className="rounded-full border border-chart-950 bg-chart-950 px-5 py-2.5 text-sm font-bold text-beacon-400 shadow-lg shadow-black/30 transition-all hover:bg-chart-900 sm:py-2"
                 >
-                  {copied ? t("daily.copied") : t("daily.share")}
+                  <EmojiText text={copied ? t("daily.copied") : t("daily.share")} />
                 </button>
               )}
             </div>

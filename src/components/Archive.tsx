@@ -16,6 +16,7 @@ import {
 import { useLocale } from "@/i18n";
 import { Badge, Panel, cx } from "./ui";
 import { MarkSquare } from "./MarkSquare";
+import { Glyph } from "./Glyph";
 
 /** A compact stat for the summary strip, matching the daily's record panel. */
 const Stat = ({ label, value }: { label: string; value: string | number }) => (
@@ -114,7 +115,7 @@ const Archive = () => {
           href="/daily"
           className="rounded-full border border-beacon-500/50 bg-beacon-500/10 px-4 py-2 text-sm font-semibold text-beacon-400 transition-colors hover:bg-beacon-500/20"
         >
-          {t("archive.today")} <Emoji symbol="→" className="h-4 w-4" />
+          {t("archive.today")} <Glyph name="arrow-right" />
         </Link>
       </div>
 

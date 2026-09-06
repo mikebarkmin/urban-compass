@@ -5,6 +5,7 @@ import Lobby from "./Lobby";
 import Board from "./Board";
 import Results from "./Results";
 import { Badge, cx } from "./ui";
+import { Glyph } from "./Glyph";
 
 interface GameProps {
   username: string;
@@ -25,7 +26,7 @@ const Game = ({ username, roomId, onLeave }: GameProps) => {
   if (gameState === null) {
     return (
       <div className="panel grid place-items-center gap-3 p-16 text-center">
-        <span className="animate-bounce text-3xl">⌖</span>
+        <Glyph name="compass" className="animate-bounce h-8 w-8" />
         <p className="text-sm text-chart-400">
           {status === "offline" ? t("game.offline") : t("game.connecting")}
         </p>

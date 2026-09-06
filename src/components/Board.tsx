@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import {
   Action,
   ClientGameState,
@@ -7,7 +7,7 @@ import {
   handSizeFor,
   roundsRemaining,
 } from "../../game/logic";
-import { Category, categoryIcons, cityName } from "../../game/cities";
+import { Category, cityName } from "../../game/cities";
 import { useLocale } from "@/i18n";
 import { useSound } from "@/hooks/useSound";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -17,6 +17,8 @@ import ActionFlash from "./ActionFlash";
 import PlayerList from "./PlayerList";
 import ActivityLog from "./ActivityLog";
 import TurnClock from "./TurnClock";
+import { CategoryIcon, Glyph, type GlyphName } from "./Glyph";
+import CategoryCard from "./CategoryCard";
 
 interface BoardProps {
   gameState: ClientGameState;
@@ -68,56 +70,6 @@ const ACCENT_PILL = "tap-target inline-flex items-center justify-center rounded-
 const ACCENT_PILL_SOLID = "border border-chart-950 bg-chart-950 text-beacon-400 hover:bg-chart-900";
 const ACCENT_PILL_OUTLINE = "border border-chart-950/30 text-chart-900 hover:bg-chart-950/10";
 
-/**
- * A small circled-i info icon that shows a popover on tap or click. Native
- * `title` tooltips do not fire on touch devices, so this uses a real
- * click-to-toggle bubble with click-outside dismissal instead.
- */
-const InfoIcon = ({ label }: { label: string }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (event: MouseEvent | TouchEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("touchstart", onDocClick);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("touchstart", onDocClick);
-    };
-  }, [open]);
-
-  return (
-    <span ref={ref} className="relative ml-1 inline-flex shrink-0">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          setOpen((o) => !o);
-        }}
-        aria-label={label}
-        aria-expanded={open}
-        className="inline-grid h-5 w-5 place-items-center rounded-full border border-current text-[10px] font-bold leading-none opacity-60 transition-opacity hover:opacity-100"
-      >
-        i
-      </button>
-      {open && (
-        <span
-          role="tooltip"
-          className="absolute bottom-full left-1/2 z-50 mb-1.5 w-56 -translate-x-1/2 rounded-lg border border-chart-600 bg-chart-900 px-3 py-2 text-xs font-normal leading-relaxed text-chart-200 shadow-xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {label}
-        </span>
-      )}
-    </span>
-  );
-};
-
 const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProps) => {
   const { locale, t } = useLocale();
   useFixedTopBar();
@@ -152,6 +104,14 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
   const canDouble = gameState.settings.doubleDown !== "off" && !!me?.doubleDownAvailable;
   const hasPlacedChip = (me?.placedGuesses ?? []).length > 0;
   const canPowerUp = canAct && powerUpsOn && !me?.powerUpUsed && hasPlacedChip;
+  // Sitting out is only a real choice when a card can cost you something. With
+  // no penalty for a miss, holding cards back is strictly worse than guessing,
+  // so the option is left out rather than offered as a trap.
+  const sitOutOn = gameState.settings.wrongGuessPenalty > 0;
+  // With every optional mechanic off, placing is the only thing a turn can be
+  // spent on: there is nothing to choose between, so the picker is hidden and
+  // the player goes straight to their cards.
+  const onlyPlace = !stealsOn && !doubtsOn && !powerUpsOn && !sitOutOn;
 
   const totalRounds =
     gameState.roundNumber +
@@ -192,6 +152,12 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
     // `reset` is rebuilt every render; the turn flipping is the only trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canAct]);
+
+  // Nothing to pick between: drop the player straight into placing a card, so
+  // the hand is live the moment the turn comes round.
+  useEffect(() => {
+    if (onlyPlace && canAct && actionMode === null) setActionMode("place");
+  }, [onlyPlace, canAct, actionMode]);
 
   // --- Place ---
   const stageCity = (cityId: string) => {
@@ -315,14 +281,79 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
     else confirmPlace();
   };
 
-  // The actions available in the action box.
-  const actions: { mode: ActionMode; label: string; info: string; available: boolean }[] = [
-    { mode: "place", label: t("board.action.place"), info: t("board.action.place.info"), available: canAct },
-    { mode: "steal", label: t("board.callBet"), info: t("board.callBetTitle"), available: canAct && stealsOn },
-    { mode: "doubt", label: t("board.doubt"), info: t("board.doubtTitle"), available: canAct && doubtsOn },
-    { mode: "swap", label: t("board.swap"), info: t("board.swapTitle"), available: canPowerUp },
-    { mode: "sit_out", label: t("board.sitOut"), info: t("board.sitOutTitle"), available: canAct },
+  /**
+   * What a turn can be spent on in this room. `offered` is whether the room
+   * plays with the mechanic at all — anything off is left out of the list
+   * rather than shown greyed, because a rule that is not in play is noise.
+   * `enabled` is whether it can be picked right now.
+   */
+  const actions: {
+    mode: ActionMode;
+    icon: GlyphName;
+    label: string;
+    info: string;
+    /** What the action pays off, and what it costs when it goes wrong. */
+    gain: string;
+    risk: string | null;
+    offered: boolean;
+    enabled: boolean;
+  }[] = [
+    {
+      mode: "place",
+      icon: "card-play",
+      label: t("board.action.place"),
+      info: t("board.action.place.info"),
+      gain: t("board.stake.place.gain"),
+      // Only a risk when the room actually docks points for a miss.
+      risk: sitOutOn
+        ? t("board.stake.place.risk", { count: gameState.settings.wrongGuessPenalty })
+        : null,
+      offered: true,
+      enabled: canAct,
+    },
+    {
+      mode: "steal",
+      icon: "target",
+      label: t("board.callBet"),
+      info: t("board.callBetTitle"),
+      gain: t("board.stake.steal.gain"),
+      risk: t("board.stake.steal.risk"),
+      offered: stealsOn,
+      enabled: canAct,
+    },
+    {
+      mode: "doubt",
+      icon: "question",
+      label: t("board.action.doubt"),
+      info: t("board.doubtTitle"),
+      gain: t("board.stake.doubt.gain"),
+      risk: t("board.stake.doubt.risk"),
+      offered: doubtsOn,
+      enabled: canAct,
+    },
+    {
+      mode: "swap",
+      icon: "swap",
+      label: t("board.swap"),
+      info: t("board.swapTitle"),
+      gain: t("board.stake.swap.gain"),
+      risk: t("board.stake.swap.risk"),
+      offered: powerUpsOn,
+      enabled: canPowerUp,
+    },
+    {
+      mode: "sit_out",
+      icon: "pause",
+      label: t("board.sitOut"),
+      info: t("board.sitOutTitle"),
+      gain: t("board.stake.sitOut.gain"),
+      risk: t("board.stake.sitOut.risk"),
+      offered: sitOutOn,
+      enabled: canAct,
+    },
   ];
+
+  const choices = actions.filter((action) => action.offered);
 
   // Which modes use the hand card grid.
   const naming = actionMode === "steal" && !!stealTarget;
@@ -352,7 +383,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                 )}
               >
                 {canAct
-                  ? t("board.yourTurn")
+                  ? t(onlyPlace ? "board.yourTurnPlace" : "board.yourTurn")
                   : iAmDone || cardsLeft === 0
                     ? t("board.outOfCards")
                     : t("board.playing", { player: activePlayer ?? "" })}
@@ -396,34 +427,70 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
       <div className="grid gap-4 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:grid-cols-[1fr_320px] lg:pb-[calc(7rem+env(safe-area-inset-bottom))]">
         <div className="space-y-4">
           {/* Action box — the player picks what to do this turn before touching
-              the board. Each button has an info icon explaining the action. */}
-          <Panel title={t("board.action.title")} subtitle={t("board.action.subtitle")}>
-            <div className="flex flex-wrap gap-2">
-              {actions.map(({ mode, label, info, available }) => {
-                const active = actionMode === mode;
-                return (
-                  <button
-                    key={mode}
-                    type="button"
-                    disabled={!available}
-                    onClick={() => selectMode(mode)}
-                    aria-label={label}
-                    className={cx(
-                      "tap-target inline-flex items-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all sm:px-5 sm:py-3",
-                      active
-                        ? "-translate-y-0.5 border-beacon-500 bg-beacon-500/15 text-beacon-200 shadow-lg shadow-beacon-500/20"
-                        : available
-                          ? "border-chart-600 bg-chart-850 hover:-translate-y-0.5 hover:border-chart-400 text-chart-200"
-                          : "cursor-not-allowed border-chart-800 bg-chart-900 text-chart-600",
-                    )}
-                  >
-                    {label}
-                    <InfoIcon label={info} />
-                  </button>
-                );
-              })}
-            </div>
-          </Panel>
+              the board. Skipped entirely when placing is the only option. */}
+          {!onlyPlace && (
+            <Panel title={t("board.action.title")} subtitle={t("board.action.subtitle")}>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {choices.map(({ mode, icon, label, info, gain, risk, enabled }) => {
+                  const active = actionMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      disabled={!enabled}
+                      onClick={() => selectMode(mode)}
+                      className={cx(
+                        "tap-target group flex items-start gap-3 rounded-xl border p-3 text-left transition-all",
+                        active
+                          ? "-translate-y-0.5 border-beacon-500 bg-beacon-500/15 shadow-lg shadow-beacon-500/20"
+                          : enabled
+                            ? "border-chart-600 bg-chart-850 hover:-translate-y-0.5 hover:border-chart-400"
+                            : "cursor-not-allowed border-chart-800 bg-chart-900 opacity-60",
+                      )}
+                    >
+                      <span
+                        className={cx(
+                          "grid h-9 w-9 shrink-0 place-items-center rounded-lg ring-1 ring-inset transition-colors",
+                          active
+                            ? "bg-beacon-500/20 text-beacon-300 ring-beacon-500/50"
+                            : enabled
+                              ? "bg-chart-950/40 text-chart-300 ring-chart-600/70"
+                              : "bg-chart-950/40 text-chart-600 ring-chart-700",
+                        )}
+                      >
+                        <Glyph name={icon} className="h-4.5 w-4.5" />
+                      </span>
+                      <span className="min-w-0">
+                        <span
+                          className={cx(
+                            "block text-sm leading-tight font-semibold",
+                            active ? "text-beacon-200" : enabled ? "text-chart-100" : "text-chart-500",
+                          )}
+                        >
+                          {label}
+                        </span>
+                        <span className="mt-0.5 block text-[11px] leading-snug text-chart-400">
+                          {info}
+                        </span>
+                        {/* What it is worth, and what it costs when it goes
+                            wrong — the part that decides the turn. */}
+                        <span className="mt-1.5 flex items-start gap-1 text-[10px] leading-snug text-signal-400">
+                          <Glyph name="check" className="mt-px shrink-0" />
+                          {gain}
+                        </span>
+                        {risk && (
+                          <span className="mt-0.5 flex items-start gap-1 text-[10px] leading-snug text-alert-500">
+                            <Glyph name="cross" className="mt-px shrink-0" />
+                            {risk}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Panel>
+          )}
 
           {/* Hand */}
           <Panel
@@ -462,9 +529,10 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                     : actionMode === "place" && !placedOn;
 
                 return (
-                  <button
+                  <CategoryCard
                     key={category}
-                    type="button"
+                    category={category}
+                    label={t(`card.${category}.short`)}
                     disabled={!usable}
                     onClick={() => {
                       if (naming) {
@@ -475,44 +543,33 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                         setSelectedCategory(isSelected ? null : category);
                       }
                     }}
+                    tone={
+                      swapPicked || isSelected
+                        ? "selected"
+                        : placedOn
+                          ? "placed"
+                          : usable
+                            ? "idle"
+                            : "muted"
+                    }
                     className={cx(
-                      "group relative rounded-xl border px-3 py-4 text-left transition-all sm:w-[104px] sm:py-3",
-                      swapPicked
-                        ? "-translate-y-1 border-beacon-500 bg-beacon-500/15 shadow-lg shadow-beacon-500/20"
-                        : isSelected
-                          ? "-translate-y-1 border-beacon-500 bg-beacon-500/15 shadow-lg shadow-beacon-500/20"
-                          : placedOn
-                            ? "border-signal-500/40 bg-signal-500/10"
-                            : usable
-                              ? "border-chart-600 bg-chart-850 hover:-translate-y-0.5 hover:border-chart-400"
-                              : "border-chart-800 bg-chart-900",
+                      usable &&
+                        !isSelected &&
+                        !swapPicked &&
+                        "hover:-translate-y-0.5 hover:border-chart-400",
                       !usable && !placedOn && "opacity-50",
                       naming && usable && "hover:border-alert-500 hover:bg-alert-500/10",
                       pickingSwap && !swapPicked && "hover:border-beacon-500 hover:bg-beacon-500/10",
                     )}
-                  >
-                    <span
-                      className={cx(
-                        "font-display text-2xl leading-none",
-                        swapPicked || isSelected
-                          ? "text-beacon-400"
-                          : placedOn
-                            ? "text-signal-400"
-                            : "text-chart-400",
-                      )}
-                    >
-                      {categoryIcons[category]}
-                    </span>
-                    <span className="mt-2 block text-xs leading-tight font-medium text-chart-200">
-                      {t(`card.${category}.short`)}
-                    </span>
-                    {placedCity && (
-                      <span className="mt-1.5 block truncate text-[10px] text-signal-400">
-                        <Emoji symbol="→" className="h-3 w-3" /> {cityName(placedCity, locale)}
-                        {wasDoubled && <span className="ml-1 text-beacon-400">2×</span>}
-                      </span>
-                    )}
-                  </button>
+                    footer={
+                      placedCity && (
+                        <span className="text-signal-400">
+                          <Glyph name="arrow-right" /> {cityName(placedCity, locale)}
+                          {wasDoubled && <span className="ml-1 text-beacon-400">2×</span>}
+                        </span>
+                      )
+                    }
+                  />
                 );
               })}
             </div>
@@ -684,8 +741,10 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
       </div>
 
       {/* Unified bottom bar — shows the current step's guidance and a confirm
-          button. Every action flows through here once its selection is staged. */}
-      {actionMode && (
+          button. Every action flows through here once its selection is staged.
+          With placing as the only action there is no mode to announce, so the
+          bar waits until a card is actually in hand. */}
+      {actionMode && (!onlyPlace || !!selectedCategory) && (
         <div
           className={cx(barSurface(true), "bottom-0 z-50 border-t")}
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
@@ -695,7 +754,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
               {/* Current selection badges */}
               {actionMode === "place" && selectedCategory && (
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-chart-950/20 bg-chart-950/10 px-2.5 py-1 text-sm font-semibold text-chart-950">
-                  <span className="text-base">{categoryIcons[selectedCategory]}</span>
+                  <CategoryIcon category={selectedCategory} className="text-base" />
                   {t(`card.${selectedCategory}.short`)}
                 </span>
               )}
@@ -707,7 +766,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
               )}
               {actionMode === "steal" && pendingStealCategory && (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-chart-950/20 bg-chart-950/10 px-2.5 py-1 text-sm font-semibold text-chart-950">
-                  {categoryIcons[pendingStealCategory]} {t(`card.${pendingStealCategory}.short`)}
+                  <CategoryIcon category={pendingStealCategory} /> {t(`card.${pendingStealCategory}.short`)}
                 </span>
               )}
               {actionMode === "doubt" && doubtTarget && (
@@ -718,7 +777,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
               )}
               {actionMode === "swap" && swapFrom && (
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-chart-950/20 bg-chart-950/10 px-2.5 py-1 text-sm font-semibold text-chart-950">
-                  <span className="text-base">{categoryIcons[swapFrom.category]}</span>
+                  <CategoryIcon category={swapFrom.category} className="text-base" />
                   {t(`card.${swapFrom.category}.short`)}
                 </span>
               )}

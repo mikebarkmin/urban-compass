@@ -6,7 +6,7 @@ import {
   MIN_POOL_SIZE,
   citySetCategories,
 } from "../../game/citySets";
-import { City, categoryIcons, cityName, formatCoordinate, formatPopulation } from "../../game/cities";
+import { City, cityName, formatCoordinate, formatPopulation } from "../../game/cities";
 import {
   KmzParseError,
   ParsedCitySet,
@@ -26,6 +26,7 @@ import { Badge, Button, cx } from "./ui";
 import MiniMap from "./MiniMap";
 import CitySetBuilder from "./CitySetBuilder";
 import SavedSetList from "./SavedSetList";
+import { CategoryIcon } from "./Glyph";
 
 interface CitySetPickerProps {
   citySetId: string;
@@ -143,8 +144,10 @@ const CitySetPicker = ({
                       <span className="text-[11px] text-chart-500">
                         {t("picker.cities", { count: set.cities.length })}
                       </span>
-                      <span className="font-display text-xs tracking-wider text-chart-600">
-                        {cards.map((category) => categoryIcons[category]).join("")}
+                      <span className="flex items-center gap-1 text-xs text-chart-600">
+                        {cards.map((category) => (
+                          <CategoryIcon key={category} category={category} />
+                        ))}
                       </span>
                     </div>
                   </button>

@@ -10,7 +10,6 @@ import {
 } from "../../game/logic";
 import {
   Category,
-  categoryIcons,
   cityName,
   evidenceOf,
   formatCoordinate,
@@ -24,6 +23,8 @@ import GameOver from "./GameOver";
 import MiniMap from "./MiniMap";
 import ActivityLog from "./ActivityLog";
 import Confetti from "./Confetti";
+import { EmojiText } from "./Emoji";
+import { CategoryIcon, Glyph } from "./Glyph";
 
 interface ResultsProps {
   gameState: ClientGameState;
@@ -264,7 +265,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
                 className="animate-drumroll font-display text-base font-bold text-beacon-400"
                 aria-hidden
               >
-                ◴
+                <Glyph name="clock" />
               </span>
               <span className="font-display text-sm font-semibold text-chart-100">
                 {t("results.reveal.intro", { round: gameState.roundNumber })}
@@ -275,7 +276,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
               onClick={skipReveal}
               className="text-xs text-chart-400 underline underline-offset-4 transition-colors hover:text-chart-200"
             >
-              {t("results.reveal.skip")}
+              <EmojiText text={t("results.reveal.skip")} />
             </button>
           </div>
         ) : finished ? (
@@ -306,7 +307,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
                 disabled={gameState.users.length < MIN_PLAYERS}
                 onClick={() => dispatch({ type: "next_round" })}
               >
-                {t("results.deal")}
+                <EmojiText text={t("results.deal")} />
               </Button>
             ) : (
               <span className="text-xs text-chart-400">
@@ -392,7 +393,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
                       )}
                     >
                       <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-chart-400 uppercase">
-                        <span className="text-beacon-500">{categoryIcons[category]}</span>
+                        <CategoryIcon category={category} className="text-beacon-500" />
                         {t(`card.${category}`)}
                       </div>
 
@@ -490,7 +491,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
                                     2×
                                   </span>
                                 )}
-                                <Emoji symbol="→" className="h-3 w-3 text-chart-500" />
+                                <Glyph name="arrow-right" className="text-chart-500" />
                                 <span className="text-chart-300">
                                   {guessedCity ? cityName(guessedCity, locale) : "?"}
                                 </span>
@@ -507,7 +508,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
                     </div>
 
                     {/* Back face: compass-rose card back, visible while face-down. */}
-                    <CardBack icon={categoryIcons[category]} />
+                    <CardBack icon={<CategoryIcon category={category} />} />
                   </div>
                 </div>
               );

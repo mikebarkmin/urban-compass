@@ -11,6 +11,7 @@ import { Button, Field, Panel, inputClass } from "@/components/ui";
 import { randomRoomCode } from "@/utils";
 import { Rich, useLocale } from "@/i18n";
 import { CITY_SETS } from "../../game/citySets";
+import { Glyph } from "@/components/Glyph";
 
 const queryParamsValidator = z.object({
   username: z.string().min(1),
@@ -131,7 +132,7 @@ export default function Home() {
                       </span>
                       <span className="block text-xs text-chart-400">{sub}</span>
                     </span>
-                    <Emoji symbol="→" className="ml-auto h-4 w-4 text-chart-500" />
+                    <Glyph name="arrow-right" className="ml-auto text-chart-500" />
                   </Link>
                 ))}
               </div>

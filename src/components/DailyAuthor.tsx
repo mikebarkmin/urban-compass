@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Category,
   City,
-  categoryIcons,
   cityName,
   drawBoard,
   formatPopulation,
@@ -31,6 +30,7 @@ import { downloadBlob } from "@/utils";
 import { useLocale } from "@/i18n";
 import { Badge, Button, Field, Panel, Segmented, cx, inputClass } from "./ui";
 import MiniMap from "./MiniMap";
+import { CategoryIcon } from "./Glyph";
 
 /**
  * Letters that carry no combining accent to strip — NFD leaves them whole — so
@@ -529,7 +529,7 @@ const DailyAuthor = () => {
                       key={category}
                       className="flex items-center gap-2 rounded-lg border border-chart-800 bg-chart-900/50 px-3 py-1.5 text-xs"
                     >
-                      <span className="text-beacon-500">{categoryIcons[category]}</span>
+                      <CategoryIcon category={category} className="text-beacon-500" />
                       <span className="text-chart-500">{t(`card.${category}.short`)}</span>
                       <span className="ml-auto truncate font-semibold text-chart-100">
                         {answer ? cityName(answer, locale) : "—"}

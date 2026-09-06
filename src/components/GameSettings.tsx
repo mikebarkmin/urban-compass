@@ -12,10 +12,10 @@ import {
   BoardQuality,
   Category,
   MIN_CATEGORIES,
-  categoryIcons,
 } from "../../game/cities";
 import { useT } from "@/i18n";
 import { Badge, Segmented, SettingRow, cx } from "./ui";
+import { CategoryIcon } from "./Glyph";
 
 interface GameSettingsProps {
   gameState: ClientGameState;
@@ -184,9 +184,10 @@ const GameSettingsPanel = ({ gameState, isHost, dispatch }: GameSettingsProps) =
                   (locked || wouldEmpty) && available && "cursor-not-allowed",
                 )}
               >
-                <span className={active ? "text-beacon-400" : "text-chart-600"}>
-                  {categoryIcons[category]}
-                </span>
+                <CategoryIcon
+                  category={category}
+                  className={active ? "text-beacon-400" : "text-chart-600"}
+                />
                 {t(`card.${category}.short`)}
               </button>
             );

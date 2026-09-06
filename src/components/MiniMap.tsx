@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { City, PublicCity, Category, categoryIcons, cityName } from "../../game/cities";
+import { City, PublicCity, Category, cityName } from "../../game/cities";
+import { CATEGORY_GLYPHS, GlyphPath } from "./Glyph";
 import { useLocale } from "@/i18n";
 import { cx } from "./ui";
 
@@ -22,6 +23,41 @@ interface MiniMapProps {
   className?: string;
   height?: number;
 }
+
+/**
+ * The card glyphs under an answer dot. Drawn as paths rather than set as text,
+ * for the same reason the rest of the app does (see `Glyph.tsx`) — and here it
+ * also means the row is laid out in map units instead of depending on how a
+ * font happens to space the symbols.
+ */
+const CategoryGlyphRow = ({
+  categories,
+  x,
+  y,
+  size,
+}: {
+  categories: Category[];
+  x: number;
+  y: number;
+  size: number;
+}) => {
+  const gap = size * 0.35;
+  const width = categories.length * size + (categories.length - 1) * gap;
+  const scale = size / 24;
+
+  return (
+    <g className="fill-beacon-500">
+      {categories.map((category, index) => (
+        <g
+          key={category}
+          transform={`translate(${x - width / 2 + index * (size + gap)} ${y}) scale(${scale})`}
+        >
+          <GlyphPath name={CATEGORY_GLYPHS[category]} />
+        </g>
+      ))}
+    </g>
+  );
+};
 
 /**
  * A dependency-free scatter of cities on an equirectangular projection, scaled
@@ -221,15 +257,12 @@ const MiniMap = ({
                 </text>
               )}
               {isAnswer && (
-                <text
+                <CategoryGlyphRow
+                  categories={categories}
                   x={city.x}
-                  y={city.y + city.r + Math.max(4.5, answerFont * 1.25)}
-                  textAnchor="middle"
-                  className="fill-beacon-500"
-                  style={{ fontSize: Math.max(4, answerFont * 1.1) }}
-                >
-                  {categories.map((category) => categoryIcons[category]).join(" ")}
-                </text>
+                  y={city.y + city.r + 3}
+                  size={Math.max(4, answerFont * 1.1)}
+                />
               )}
             </g>
           );

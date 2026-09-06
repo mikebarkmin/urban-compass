@@ -43,9 +43,19 @@ The emoji are rendered from self-hosted Twemoji SVGs (`public/emoji/`) rather
 than the system emoji font, so a puck looks the same on Windows, macOS, Linux
 and Android. The same applies to every other emoji in the app — city set icons,
 the mute toggle, the host crown, and emoji embedded in translated strings.
-Typographic symbols (the category arrows, button arrows, the copied
-checkmark) and the daily-share squares stay as text: the arrows are not emoji,
-and the squares go to the clipboard where a chat app renders them.
+`EmojiText` does the swap inside a translated string; `Emoji` takes a single
+symbol.
+
+Nothing else is left to the OS either. The typographic symbols — the card
+faces, the inline arrows, the copied checkmark, the reveal drumroll and the
+wordmark — are drawn as SVG paths by `src/components/Glyph.tsx`. They used to
+be Unicode characters, but the double arrows and the geometric shapes are
+missing from common fonts and fell back to an empty box, and a card that
+renders as a box is unplayable. `CategoryIcon` draws a card's glyph; the
+minimap inlines the same paths into its own `<svg>`.
+
+The only symbols still typed as text are the daily-share squares, which go to
+the clipboard for a chat app to render.
 
 ## Deploying
 
@@ -155,6 +165,20 @@ Cards lost this way still count against your hand, so a round always ends: the
 reducer's fuzz tests play 300 games with every mechanic on and none of them
 runs long.
 
+**What a turn offers** follows from these switches. The action box lists only
+what the room actually plays with — steals, doubts and power-ups appear because
+they were turned on, not greyed out because they were not. Each one carries its
+stake: what it pays when it lands and what it costs when it does not, so the
+choice between calling a bet and doubting one is a read on the table rather than
+a guess about the rules. Placing shows the live miss penalty, so the same tile
+says something different in a room that docks 2 points than in one that docks
+nothing. Sitting out is on the
+same footing: it is only a real choice when a miss costs points, so it is
+offered when **cost of a miss** is set and left out otherwise, rather than
+sitting there as a strictly worse move. And in a default room, where none of
+this is on, placing a card is the only thing a turn can be spent on — so there
+is no box at all and the hand is live the moment your turn comes round.
+
 
 ### The cards
 
@@ -184,6 +208,13 @@ The gating is all-or-nothing per set on purpose. A pool where half the cities
 have an elevation would quietly hand "lowest" to whichever city was missing one,
 so `categorySupported` requires the whole pool, and a set switch re-filters the
 room's selection back to what the new pool can answer.
+
+A card in hand is drawn as a card: `CategoryCard` puts an index pip in two
+opposing corners, the glyph on a ring in the middle, the criterion underneath
+and, at the foot, the city it was played on. The board and the daily share the
+component, so a card means the same thing in both — amber for the one in your
+hand right now, teal for one already committed, and the daily's green/amber/grey
+grading once the answers are out.
 
 ### How long a game lasts
 

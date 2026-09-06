@@ -5,15 +5,16 @@ import {
   MIN_PLAYERS,
   handSizeFor,
 } from "../../game/logic";
-import { City, SCORING_VALUES, categoryIcons } from "../../game/cities";
+import { City, SCORING_VALUES } from "../../game/cities";
 import { shareOrCopy } from "@/utils";
 import { Rich, useT } from "@/i18n";
 import { Badge, Button, Panel, cx } from "./ui";
-import { Emoji } from "./Emoji";
+import { Emoji, EmojiText } from "./Emoji";
 import AvatarEditor from "./AvatarEditor";
 import CitySetPicker from "./CitySetPicker";
 import GameSettingsPanel from "./GameSettings";
 import PlayerList from "./PlayerList";
+import { CategoryIcon } from "./Glyph";
 
 interface LobbyProps {
   gameState: ClientGameState;
@@ -149,7 +150,7 @@ const Lobby = ({ gameState, username, roomId, dispatch }: LobbyProps) => {
           <div className="mt-4 flex flex-wrap gap-1.5">
             {gameState.categories.map((category) => (
               <Badge key={category} tone="muted">
-                <span className="text-beacon-500">{categoryIcons[category]}</span>
+                <CategoryIcon category={category} className="text-beacon-500" />
                 {t(`card.${category}`)}
               </Badge>
             ))}
@@ -185,7 +186,7 @@ const Lobby = ({ gameState, username, roomId, dispatch }: LobbyProps) => {
                 {roomId}
               </span>
               <Button variant="ghost" size="sm" onClick={copyInvite}>
-                {copied ? t("lobby.copied") : t("lobby.copy")}
+                <EmojiText text={copied ? t("lobby.copied") : t("lobby.copy")} />
               </Button>
             </div>
           </div>

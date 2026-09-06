@@ -12,6 +12,7 @@ import { LOCALES, LOCALE_LABELS, useLocale } from "@/i18n";
 import { useSound } from "@/hooks/useSound";
 import { Emoji } from "./Emoji";
 import { cx } from "./ui";
+import { Glyph } from "./Glyph";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const spaceGrotesk = Space_Grotesk({
@@ -126,10 +127,10 @@ const Layout = ({ children, header }: LayoutProps) => {
         <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
           <Link href="/" aria-label={t("app.name")}>
             <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-beacon-500 font-display text-lg font-bold text-chart-950"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-beacon-500 text-chart-950"
               aria-hidden
             >
-              ⌖
+              <Glyph name="compass" className="h-5 w-5" />
             </span>
           </Link>
           <div className="min-w-0">
