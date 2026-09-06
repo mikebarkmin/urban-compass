@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import Link from "next/link";
 import { Space_Grotesk, Inter } from "next/font/google";
 import { LOCALES, LOCALE_LABELS, useLocale } from "@/i18n";
 import { useSound } from "@/hooks/useSound";
@@ -123,12 +124,14 @@ const Layout = ({ children, header }: LayoutProps) => {
     >
       <header className="mb-4 flex items-center justify-between gap-2 sm:mb-6 sm:gap-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
-          <span
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-beacon-500 font-display text-lg font-bold text-chart-950"
-            aria-hidden
-          >
-            ⌖
-          </span>
+          <Link href="/" aria-label={t("app.name")}>
+            <span
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-beacon-500 font-display text-lg font-bold text-chart-950"
+              aria-hidden
+            >
+              ⌖
+            </span>
+          </Link>
           <div className="min-w-0">
             <div className="truncate font-display text-base leading-tight font-bold tracking-tight">
               {t("app.name")}
