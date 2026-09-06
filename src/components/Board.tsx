@@ -508,7 +508,7 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
                     </span>
                     {placedCity && (
                       <span className="mt-1.5 block truncate text-[10px] text-signal-400">
-                        → {cityName(placedCity, locale)}
+                        <Emoji symbol="→" className="h-3 w-3" /> {cityName(placedCity, locale)}
                         {wasDoubled && <span className="ml-1 text-beacon-400">2×</span>}
                       </span>
                     )}

@@ -34,7 +34,7 @@ export const Emoji = ({
  * does not ship) is left as text.
  */
 const EMOJI_RE =
-  /[\u{1F1E6}-\u{1F1FF}]{2}|[\u{1F300}-\u{1FAFF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]\uFE0F?|[\u{2600}-\u{27BF}]\uFE0F/gu;
+  /[\u{1F1E6}-\u{1F1FF}]{2}|[\u{1F300}-\u{1FAFF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]\uFE0F?|[\u{2190}-\u{21FF}\u{25A0}-\u{25FF}\u{2600}-\u{27BF}\u{2700}-\u{27BF}\u{2B00}-\u{2BFF}]\uFE0F?/gu;
 
 type Segment = { emoji: string } | { text: string };
 

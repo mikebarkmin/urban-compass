@@ -490,7 +490,7 @@ const Results = ({ gameState, username, roomId, dispatch }: ResultsProps) => {
                                     2×
                                   </span>
                                 )}
-                                <span className="text-chart-500">→</span>
+                                <Emoji symbol="→" className="h-3 w-3 text-chart-500" />
                                 <span className="text-chart-300">
                                   {guessedCity ? cityName(guessedCity, locale) : "?"}
                                 </span>

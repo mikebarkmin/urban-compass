@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { Emoji } from "@/components/Emoji";
 import {
   Category,
   categoryIcons,
@@ -217,7 +218,7 @@ const Daily = () => {
                   : "border-chart-700 text-chart-400 hover:bg-chart-800 hover:text-chart-200",
               )}
             >
-              ←
+              <Emoji symbol="←" className="h-4 w-4" />
             </Link>
             <div className="min-w-0">
               <div
@@ -336,7 +337,7 @@ const Daily = () => {
                       city ? "text-chart-300" : "text-chart-600",
                     )}
                   >
-                    {city ? `→ ${cityName(city, locale)}` : t("daily.notPlaced")}
+                    {city ? <><Emoji symbol="→" className="h-3 w-3" /> {cityName(city, locale)}</> : t("daily.notPlaced")}
                   </span>
                 </button>
               );
@@ -509,14 +510,14 @@ const Daily = () => {
             {previousKey && (
               <Link href={{ pathname: "/daily", query: { d: previousKey } }}>
                 <Button variant="secondary" size="sm">
-                  ← {t("daily.previousDay")}
+                  <Emoji symbol="←" className="h-4 w-4" /> {t("daily.previousDay")}
                 </Button>
               </Link>
             )}
             {nextKey && (
               <Link href={{ pathname: "/daily", query: { d: nextKey } }}>
                 <Button variant="secondary" size="sm">
-                  {t("daily.nextDay")} →
+                  {t("daily.nextDay")} <Emoji symbol="→" className="h-4 w-4" />
                 </Button>
               </Link>
             )}

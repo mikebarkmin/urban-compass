@@ -3,6 +3,7 @@ import { LogEntry } from "../../game/logic";
 import { ALL_CATEGORIES, Category, categoryIcons } from "../../game/cities";
 import { useLocale } from "@/i18n";
 import { useSound } from "@/hooks/useSound";
+import { EmojiText } from "@/components/Emoji";
 import { cx } from "./ui";
 
 /**
@@ -143,11 +144,11 @@ const ActionFlash = ({ log }: { log: LogEntry[] }) => {
             {t(headline)}
           </div>
           <div className="mt-1.5 text-sm font-medium text-chart-100">
-            {t("flash.body", {
+            <EmojiText text={t("flash.body", {
               player: flash.player,
               target: flash.target,
               city: flash.city,
-            })}
+            })} />
           </div>
         </div>
       </div>

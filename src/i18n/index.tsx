@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { de, en, type MessageKey } from "./dictionaries";
+import { EmojiText } from "@/components/Emoji";
 
 export type Locale = "en" | "de";
 
@@ -140,7 +141,7 @@ export const Rich = ({ k, params }: { k: string; params?: Params }) => {
             {part.slice(4, -5)}
           </em>
         ) : (
-          part
+          <EmojiText key={index} text={part} />
         ),
       )}
     </>

@@ -48,7 +48,7 @@ export default function SetsPage() {
               href="/"
               className="text-sm text-chart-400 underline underline-offset-4 hover:text-chart-200"
             >
-              ← {t("daily.backToRooms")}
+              <Emoji symbol="←" className="h-4 w-4" /> {t("daily.backToRooms")}
             </Link>
           </div>
 

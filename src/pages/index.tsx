@@ -131,7 +131,7 @@ export default function Home() {
                       </span>
                       <span className="block text-xs text-chart-400">{sub}</span>
                     </span>
-                    <span className="ml-auto text-chart-500">→</span>
+                    <Emoji symbol="→" className="ml-auto h-4 w-4 text-chart-500" />
                   </Link>
                 ))}
               </div>
