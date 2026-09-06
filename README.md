@@ -57,6 +57,28 @@ minimap inlines the same paths into its own `<svg>`.
 The only symbols still typed as text are the daily-share squares, which go to
 the clipboard for a chat app to render.
 
+## Sound, haptics and feedback
+
+The game has no audio assets. `src/hooks/useSound.tsx` synthesises every cue
+from oscillators and noise buffers through the Web Audio API at the moment it
+fires — a sine blip for a card landing, a two-tone chime for a correct call, a
+low sawtooth buzz for a miss, a white-noise drumroll before the reveal, a
+triangle-wave fanfare at game over, a tense two-note question for a doubt, and
+an upward swoop for a power-up swap. On a phone the same cues also vibrate:
+short `navigator.vibrate` patterns that land even when the device is on
+silent. The mute toggle in the header covers both — it is the one "make the
+game quiet" control — and the choice persists in `localStorage`. Flourishes
+(drumroll, fanfare) are skipped when the user has requested reduced motion;
+chimes still land.
+
+Two overlays ride on top of the log. `ActionFlash` watches the shared
+activity log and pops a verdict card over the board when a steal or a doubt
+resolves — driven by the log rather than the acting player's dispatch, so
+everyone at the table sees the same verdict at the same time, including the
+player who was called. `Confetti` is a dependency-free particle burst on a
+full-screen canvas, fired on a category win and bumped for the game-over
+finale; it is skipped entirely under reduced motion.
+
 ## Deploying
 
 The two halves deploy to two places: the client is a static export on **GitHub
@@ -64,12 +86,13 @@ Pages**, the room server goes to **PartyKit**. `.github/workflows/deploy.yml`
 does both on every push to `main` — PartyKit first, so the client can be built
 against the URL the server ended up on.
 
-Two repository secrets are needed:
+Three repository secrets are needed:
 
-| Secret            | Where it comes from                     |
-| ----------------- | --------------------------------------- |
-| `PARTYKIT_TOKEN`  | `npx partykit token generate`           |
-| `PARTYKIT_LOGIN`  | your PartyKit (GitHub) username         |
+| Secret              | Where it comes from                     |
+| ------------------- | --------------------------------------- |
+| `PARTYKIT_TOKEN`    | `npx partykit token generate`           |
+| `PARTYKIT_LOGIN`    | your PartyKit (GitHub) username         |
+| `PARTYKIT_SERVER`   | the full URL the client connects to, e.g. `<partykit.json name>.<PARTYKIT_LOGIN>.partykit.dev` or a custom domain |
 
 Then set **Settings → Pages → Source** to *GitHub Actions*.
 
@@ -78,9 +101,10 @@ The build is driven by two variables the workflow fills in:
 - `NEXT_PUBLIC_BASE_PATH` — `/urban-compass` on a project page, empty on a
   custom domain. Taken from `actions/configure-pages`, so a custom domain needs
   no change here.
-- `NEXT_PUBLIC_SERVER_URL` — defaults to
-  `<partykit.json name>.<PARTYKIT_LOGIN>.partykit.dev`. Set a repository
-  variable of the same name to point at a custom server domain instead.
+- `NEXT_PUBLIC_SERVER_URL` — set in CI from the `PARTYKIT_SERVER` secret. The
+  workflow's "Resolve server URL" step falls back to
+  `<partykit.json name>.<PARTYKIT_LOGIN>.partykit.dev` when the secret is
+  empty, but the build itself always reads the secret.
 
 Deploying either half by hand:
 
@@ -243,6 +267,12 @@ countdown agrees with the room even when a player's own clock is minutes out.
 One expired turn is skipped; a second takes that player out of the round, which
 also stops a table of idle players looping forever.
 
+`useWakeLock` holds the screen awake while a turn is live — a phone dimming
+mid-round costs more here than in most apps, because the turn clock keeps
+running behind the lock screen. Browsers drop the lock whenever the tab is
+hidden, so it is re-acquired on the way back. Where the API is missing or the
+request is refused, the screen behaves as it normally would.
+
 ### The board draw
 
 A uniform random draw is a worse game than it looks. Sampling 20,000 boards of
@@ -351,6 +381,16 @@ on a board share a name. Where a theme could not meet that bar it was re-cut
 rather than shipped: New England alone puts both the northern and the eastern
 answer in Maine, so Thanksgiving became the Pilgrims' crossing instead.
 
+### The archive
+
+`/archive` lists every puzzle since the first one, newest first, grouped by
+month. A day you have finished shows its mark pattern and score; anything
+else is a link to go and play it. A summary strip at the top carries the
+streak, best streak, puzzles played and average score — the same stats the
+daily page shows. Authored days carry their theme as a badge, and today's
+entry is highlighted. The query parameter `?d=<dayKey>` on `/daily` is how the
+archive navigates to a past day.
+
 ## City sets
 
 The host chooses what everyone guesses from. Sets are grouped by how much
@@ -394,6 +434,13 @@ coordinate format or to swap latitude and longitude if the guess was wrong.
 Cities without a name, coordinates or a population are skipped and listed in the
 preview. `public/europa.kmz` is included as a sample.
 
+A set can also be exported back out. `src/utils/kmzExport.ts` is the inverse of
+the reader — it builds a KMZ from a `City[]` in the browser, with no
+dependency: KML with `<Point>` geometry for Google Earth and Maps, plus
+`<ExtendedData>` columns so the file round-trips through the app's own reader.
+The output is a single-entry ZIP produced with `CompressionStream`, matching
+what the reader's `DecompressionStream` expects.
+
 ## Languages
 
 `src/i18n/dictionaries.ts` holds every string in English and German, flat and
@@ -421,10 +468,15 @@ The project is a monorepo holding both the client (Next.js) and the server
 | `game/logic.ts`           | `GameState`, `GameSettings`, the `GameAction`s, `scoreRound` and the `gameUpdater` reducer |
 | `game/cities.ts`          | The city and card model, the board draw, answer resolution, formatting |
 | `game/citySets.ts`        | Built-in pools and validation for uploaded ones             |
+| `game/avatar.ts`          | The avatar model: hues, symbols, randomization             |
 | `party/index.ts`          | The PartyKit room: applies actions, runs the clock, broadcasts state |
-| `src/components/`         | Lobby, Board, Results, GameOver, Daily and the shared UI primitives |
+| `src/components/`         | Lobby, Board, Results, GameOver, Daily, Archive, ActionFlash, Confetti and the shared UI primitives |
 | `src/hooks/useGameRoom`   | The client's socket: `gameState` in, `dispatch` out         |
+| `src/hooks/useSound`      | Synthesised audio cues and haptics, the mute toggle         |
+| `src/hooks/useWakeLock`   | Holds the screen awake while a turn is live                 |
 | `src/utils/daily.ts`      | The daily puzzle: seeding, marking, streaks, share text      |
+| `src/utils/kmz.ts`        | KMZ/KML import: archive unpack, placemark parsing, coordinate detection |
+| `src/utils/kmzExport.ts`  | KMZ export: builds a KMZ from a city set in the browser     |
 | `src/i18n/`               | The English and German dictionaries and the locale provider |
 
 ### The reducer pattern
@@ -462,3 +514,11 @@ City data in `public/cities5000.json` is derived from
 [GeoNames](https://www.geonames.org/) (`cities5000` and the alternate-names
 dump), preprocessed by `scripts/build-cities.mjs`. GeoNames is licensed under
 [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+## Inspiration
+
+Urban Compass was inspired by the geography game **Spot On** by KOSMOS.
+
+If you enjoy this kind of game and would like to play a similar game offline with physical cards, consider buying the original **Spot On** from KOSMOS or looking for a second-hand copy.
+
+Urban Compass is an independent open-source project and is not affiliated with or endorsed by KOSMOS or the creators of Spot On.
