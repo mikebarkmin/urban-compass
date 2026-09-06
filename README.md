@@ -19,6 +19,7 @@ There is also a [solo daily puzzle](#the-daily-puzzle) for when nobody else is
 around.
 
 For implementation details, see [DOCUMENTATION.md](DOCUMENTATION.md).
+To contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Running it
 
