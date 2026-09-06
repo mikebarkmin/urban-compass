@@ -26,10 +26,57 @@ import {
   serializeDrafts,
 } from "@/data/dailyDrafts";
 import { SavedCitySet, loadSavedSets } from "@/data/savedSets";
+import { loadCities } from "@/data/citiesLoader";
 import { downloadBlob } from "@/utils";
 import { useLocale } from "@/i18n";
-import { Badge, Button, Field, Panel, cx, inputClass } from "./ui";
+import { Badge, Button, Field, Panel, Segmented, cx, inputClass } from "./ui";
 import MiniMap from "./MiniMap";
+
+/**
+ * Letters that carry no combining accent to strip — NFD leaves them whole — so
+ * they need spelling out by hand. Without these, Tromsø and Łódź are reachable
+ * only by typing the character itself.
+ */
+const TRANSLITERATED: Record<string, string> = {
+  "ø": "o",
+  "æ": "ae",
+  "œ": "oe",
+  "ß": "ss",
+  "ł": "l",
+  "đ": "d",
+  "ð": "d",
+  "þ": "th",
+  "ħ": "h",
+  "ı": "i",
+  "ŋ": "n",
+};
+
+/**
+ * The German convention of writing an umlaut as a digraph. Someone typing on a
+ * keyboard without umlauts writes Duesseldorf, which folds to "dusseldorf" and
+ * matches nothing, so names carrying one are indexed under this spelling too.
+ */
+const DIGRAPHS: Record<string, string> = {
+  "ä": "ae",
+  "ö": "oe",
+  "ü": "ue",
+  "ß": "ss",
+};
+
+const spellOutUmlauts = (value: string): string =>
+  value.toLowerCase().replace(/[äöüß]/g, (character) => DIGRAPHS[character]);
+
+/**
+ * Lower-cased and stripped of accents, so "Zurich" finds "Zürich". Curated sets
+ * are small enough to scroll, but the gazetteer is not: without this, every
+ * name carrying a diacritic is unreachable unless you type it exactly.
+ */
+const fold = (value: string): string =>
+  value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[øæœßłđðþħıŋ]/g, (character) => TRANSLITERATED[character]);
 
 /** A pool the board can be drawn from: a built-in set or one saved here. */
 interface Source {
@@ -59,6 +106,17 @@ const DailyAuthor = () => {
   const [board, setBoard] = useState<City[]>([]);
   const [sourceId, setSourceId] = useState(CITY_SETS[0].id);
   const [search, setSearch] = useState("");
+
+  // A set is the right pool to *draw* from — eight cities pulled out of the
+  // whole gazetteer would be eight villages nobody can place. Searching is the
+  // opposite case: any city can be worth adding by hand, so the search has its
+  // own scope, and the full dataset is fetched only once something is typed
+  // against it.
+  const [scope, setScope] = useState<"all" | "set">("all");
+  const [allCities, setAllCities] = useState<City[] | null>(null);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadedMb, setLoadedMb] = useState(0);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     setToday(dayKey());
@@ -147,23 +205,70 @@ const DailyAuthor = () => {
     );
   };
 
-  // Cities from the chosen pool that match the search and are not on the board
-  // already. Capped so a broad search cannot render thousands of rows.
-  const additions = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return [];
-    const present = new Set(board.map((city) => city.id));
+  /** Pull in the full dataset, once per session — `loadCities` caches it. */
+  const ensureAllCities = () => {
+    if (allCities || loadingCities) return;
+    setLoadingCities(true);
+    setLoadError(false);
+    void loadCities(setLoadedMb).then((loaded) => {
+      setAllCities(loaded);
+      setLoadError(loaded.length === 0);
+      setLoadingCities(false);
+    });
+  };
 
-    return source.cities
+  const searchPool = useMemo(
+    () => (scope === "all" ? (allCities ?? []) : source.cities),
+    [scope, allCities, source],
+  );
+
+  // Folding a couple of hundred thousand names on every keystroke would be far
+  // too slow, so the pool is folded once and the search runs against that. The
+  // NUL keeps a match from straddling the two names.
+  const index = useMemo(
+    () =>
+      searchPool.map((city) => {
+        const names = `${city.name}\u0000${city.nameDe ?? ""}`;
+        const text = fold(names);
+        // Only the minority of names with an umlaut need the second spelling.
+        const digraphs = fold(spellOutUmlauts(names));
+
+        return {
+          city,
+          text,
+          ...(digraphs === text ? {} : { digraphs }),
+          country: (city.country ?? "").toLowerCase(),
+        };
+      }),
+    [searchPool],
+  );
+
+  // Matches that are not on the board already. A set and the gazetteer give the
+  // same city different ids, so places on the board are excluded by name and
+  // country as well — otherwise adding Paris from the gazetteer to a board
+  // drawn from Europe would put it there twice. Capped, since a broad search
+  // over the gazetteer matches thousands.
+  const additions = useMemo(() => {
+    const term = fold(search.trim());
+    if (!term) return [];
+
+    const ids = new Set(board.map((city) => city.id));
+    const named = new Set(
+      board.map((city) => `${fold(city.name)}/${city.country ?? ""}`),
+    );
+
+    return index
       .filter(
-        (city) =>
-          !present.has(city.id) &&
-          (city.name.toLowerCase().includes(term) ||
-            city.nameDe?.toLowerCase().includes(term) ||
-            city.country?.toLowerCase() === term),
+        ({ city, text, digraphs, country }) =>
+          !ids.has(city.id) &&
+          !named.has(`${fold(city.name)}/${city.country ?? ""}`) &&
+          (text.includes(term) || digraphs?.includes(term) || country === term),
       )
-      .slice(0, 30);
-  }, [search, source, board]);
+      // Biggest first: searching "york" should offer New York before a hamlet.
+      .sort((a, b) => b.city.population - a.city.population)
+      .slice(0, 30)
+      .map(({ city }) => city);
+  }, [search, index, board]);
 
   // What the board would play like: the six answers, and how many distinct
   // cities they land on. A board where one city takes several cards collapses
@@ -343,14 +448,49 @@ const DailyAuthor = () => {
             )}
           </div>
 
-          {/* Search the chosen pool to add a city by hand. */}
+          {/* Search to add a city by hand, from the set or from everywhere. */}
           <div>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <Segmented
+                value={scope}
+                options={[
+                  { value: "all" as const, label: t("author.scopeAll") },
+                  { value: "set" as const, label: t("author.scopeSet") },
+                ]}
+                onChange={(next) => {
+                  setScope(next);
+                  if (next === "all") ensureAllCities();
+                }}
+              />
+              {scope === "all" && loadingCities && (
+                <span className="text-[11px] text-chart-400">
+                  {loadedMb > 0.05
+                    ? `${t("builder.loading")} ${loadedMb.toFixed(1)} MB`
+                    : t("builder.loading")}
+                </span>
+              )}
+            </div>
+
             <input
               className={inputClass}
               value={search}
-              placeholder={t("author.searchPlaceholder")}
-              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t(
+                scope === "all" ? "author.searchAllPlaceholder" : "author.searchPlaceholder",
+              )}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                if (scope === "all") ensureAllCities();
+              }}
             />
+
+            {scope === "all" && loadError && (
+              <p className="mt-2 rounded-lg border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-xs text-alert-500">
+                {t("builder.loadError")}
+              </p>
+            )}
+            {search.trim() && additions.length === 0 && !loadingCities && !loadError && (
+              <p className="mt-2 text-xs text-chart-500">{t("author.noMatches")}</p>
+            )}
             {additions.length > 0 && (
               <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto">
                 {additions.map((city) => (

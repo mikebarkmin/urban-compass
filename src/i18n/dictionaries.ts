@@ -395,6 +395,10 @@ export const en = {
   "author.board": "The board",
   "author.empty": "Draw a board, or search below to add cities one at a time.",
   "author.searchPlaceholder": "Search this set to add a city…",
+  "author.searchAllPlaceholder": "Search every city to add one…",
+  "author.scopeAll": "All cities",
+  "author.scopeSet": "This set only",
+  "author.noMatches": "Nothing matches, or it is on the board already.",
   "author.warnUnanswerable":
     "Some cards have no answer on this board. Every city needs coordinates and a population.",
   "author.warnHoard":
@@ -977,6 +981,10 @@ export const de: Record<MessageKey, string> = {
   "author.board": "Das Feld",
   "author.empty": "Zieh ein Feld oder such unten nach einzelnen Städten.",
   "author.searchPlaceholder": "In diesem Set nach einer Stadt suchen …",
+  "author.searchAllPlaceholder": "In allen Städten nach einer suchen …",
+  "author.scopeAll": "Alle Städte",
+  "author.scopeSet": "Nur dieses Set",
+  "author.noMatches": "Kein Treffer — oder schon auf dem Feld.",
   "author.warnUnanswerable":
     "Auf diesem Feld haben manche Karten keine Antwort. Jede Stadt braucht Koordinaten und eine Einwohnerzahl.",
   "author.warnHoard":
