@@ -459,6 +459,56 @@ export const en = {
   "picker.check": "Check a few entries before you commit",
   "picker.skippedList": "Skipped: {names}{more}.",
   "picker.andMore": " and {count} more",
+  "picker.help": "File format help",
+
+  "help.title": "Upload a city set",
+  "help.lede":
+    "How to prepare a KMZ or KML file the game can read — from Google Earth, Google My Maps, or by hand.",
+  "help.back": "Back",
+  "help.accepted.title": "Accepted files",
+  "help.accepted.body":
+    "A <em>KMZ</em> is a zipped KML — both are accepted. A KMZ must contain at least one <em>.kml</em> entry, ideally named <em>doc.kml</em>. Google Earth and Google My Maps export KMZ by default; Google My Maps also lets you export KML.",
+  "help.googleEarth.title": "From Google Earth",
+  "help.googleEarth.body":
+    "Create a folder of placemarks, one per city. Give each placemark a name and a location on the map. Export the folder as a KMZ (right-click → Export). The coordinates are stored as <em>Point geometry</em>, which the game reads directly.",
+  "help.googleMyMaps.title": "From Google My Maps",
+  "help.googleMyMaps.body":
+    "Add markers for your cities, then export the layer as a KML. My Maps writes the coordinates as <em>Point geometry</em> and puts any custom columns (population, country) into <em>ExtendedData</em>. The game detects both automatically.",
+  "help.hand.title": "By hand",
+  "help.hand.body":
+    "Write the KML yourself, then zip it into a KMZ or upload the raw KML. The structure is shown below.",
+  "help.structure.title": "KML structure",
+  "help.structure.body":
+    "The KML is a <em>Document</em> holding <em>Placemark</em> entries — one per city. Each placemark needs a name, coordinates, and a population. Cities missing any of these are skipped and listed in the upload preview.",
+  "help.point.title": "Point geometry",
+  "help.point.body":
+    "The standard KML way: coordinates inside a <em>&lt;Point&gt;</em> element, in <em>longitude,latitude</em> order (KML convention, not lat-first).",
+  "help.columns.title": "ExtendedData columns",
+  "help.columns.body":
+    "Spreadsheet exports (Google My Maps) often put latitude, longitude and population in <em>ExtendedData</em> columns instead of Point geometry. The game auto-detects which columns hold what — by column name when it is meaningful (lat, latitude, breite, lon, longitude, länge, population, einwohner) and by value patterns when the names are unhelpful.",
+  "help.coordFormat.title": "Coordinate format",
+  "help.coordFormat.body":
+    "Coordinates can be <em>decimal degrees</em> (41.38) or <em>degrees.minutes</em> (41.23 meaning 41°23'). The game detects which from the values themselves. If it guesses wrong, the upload preview has a button to re-read the file in the other format, and another to swap latitude and longitude.",
+  "help.fields.title": "Fields per city",
+  "help.fields.name": "The city's name. Required — placemarks without a name are skipped.",
+  "help.fields.coordinates": "Latitude and longitude. Required — either Point geometry or ExtendedData columns.",
+  "help.fields.population":
+    "Population as a whole number. Required — a placemark without it is skipped. Sourced from a named column (population, einwohner) or the largest whole-number column.",
+  "help.fields.country":
+    "Optional. A short country code or name. Auto-detected by column name (country, land, iso) or by short code-like values.",
+  "help.fields.elevation":
+    "Optional. Metres above sea level at the city centre. If every city carries it, the altitude cards become available.",
+  "help.fields.nameDe":
+    "Optional. German exonym (Rome → Rom). If absent, the English name is used in both languages.",
+  "help.skipped.title": "What gets skipped",
+  "help.skipped.body":
+    "Placemarks without a name, without coordinates, with coordinates out of range (latitude &gt; 90 or longitude &gt; 180), or without a population are dropped. The upload preview shows how many were skipped and why, so you can fix and re-upload.",
+  "help.escapes.title": "After the upload",
+  "help.escapes.body":
+    "The preview shows a scatter map, a few parsed entries, and two escape hatches when coordinates came from columns: <em>swap lat/lon</em> if the column guess was wrong, and <em>re-read as the other format</em> to flip between decimal degrees and degrees.minutes — without re-uploading.",
+  "help.sample.title": "Sample file",
+  "help.sample.body":
+    "The built-in <em>Europe</em> set was imported from a KMZ. Download it from the sets editor or find <em>public/europa.kmz</em> in the repository as a working example.",
 
   "builder.title": "Build a set",
   "builder.subtitle": "Filter the geonames dataset by region, population and country.",
@@ -1061,6 +1111,56 @@ export const de: Record<MessageKey, string> = {
   "picker.check": "Prüf ein paar Einträge, bevor du übernimmst",
   "picker.skippedList": "Übersprungen: {names}{more}.",
   "picker.andMore": " und {count} weitere",
+  "picker.help": "Dateiformat-Hilfe",
+
+  "help.title": "Städteset hochladen",
+  "help.lede":
+    "Wie du eine KMZ- oder KML-Datei vorbereitest, die das Spiel lesen kann — aus Google Earth, Google My Maps oder von Hand.",
+  "help.back": "Zurück",
+  "help.accepted.title": "Akzeptierte Dateien",
+  "help.accepted.body":
+    "Ein <em>KMZ</em> ist ein gezipptes KML — beide werden akzeptiert. Ein KMZ muss mindestens einen <em>.kml</em>-Eintrag enthalten, idealerweise <em>doc.kml</em>. Google Earth und Google My Maps exportieren standardmäßig KMZ; Google My Maps erlaubt auch den KML-Export.",
+  "help.googleEarth.title": "Aus Google Earth",
+  "help.googleEarth.body":
+    "Erstelle einen Ordner mit Placemarks, eins pro Stadt. Gib jedem Placemark einen Namen und einen Ort auf der Karte. Exportiere den Ordner als KMZ (Rechtsklick → Exportieren). Die Koordinaten werden als <em>Point-Geometrie</em> gespeichert, die das Spiel direkt liest.",
+  "help.googleMyMaps.title": "Aus Google My Maps",
+  "help.googleMyMaps.body":
+    "Setze Marker für deine Städte und exportiere die Ebene als KML. My Maps schreibt die Koordinaten als <em>Point-Geometrie</em> und legt alle eigenen Spalten (Bevölkerung, Land) in <em>ExtendedData</em> ab. Das Spiel erkennt beides automatisch.",
+  "help.hand.title": "Von Hand",
+  "help.hand.body":
+    "Schreibe das KML selbst, pack es in ein KMZ oder lade das rohe KML hoch. Die Struktur steht unten.",
+  "help.structure.title": "KML-Struktur",
+  "help.structure.body":
+    "Das KML ist ein <em>Document</em> mit <em>Placemark</em>-Einträgen — eins pro Stadt. Jedes Placemark braucht einen Namen, Koordinaten und eine Einwohnerzahl. Städte, denen eines fehlt, werden übersprungen und in der Vorschau aufgelistet.",
+  "help.point.title": "Point-Geometrie",
+  "help.point.body":
+    "Der Standardweg in KML: Koordinaten innerhalb eines <em>&lt;Point&gt;</em>-Elements, in der Reihenfolge <em>Länge,Breite</em> (KML-Konvention, nicht Breite zuerst).",
+  "help.columns.title": "ExtendedData-Spalten",
+  "help.columns.body":
+    "Tabellen-Exporte (Google My Maps) legen Breite, Länge und Einwohnerzahl oft in <em>ExtendedData</em>-Spalten statt in Point-Geometrie. Das Spiel erkennt automatisch, welche Spalte was enthält — am Spaltennamen, wenn er aussagekräftig ist (lat, latitude, breite, lon, longitude, länge, population, einwohner), sonst an den Wertmustern.",
+  "help.coordFormat.title": "Koordinatenformat",
+  "help.coordFormat.body":
+    "Koordinaten können <em>Dezimalgrad</em> (41.38) oder <em>Grad.Minuten</em> (41.23 bedeutet 41°23') sein. Das Spiel erkennt das Format an den Werten selbst. Wenn es falsch rät, hat die Vorschau einen Knopf zum Neu-Lesen im anderen Format und einen zum Tauschen von Breite und Länge.",
+  "help.fields.title": "Felder pro Stadt",
+  "help.fields.name": "Der Name der Stadt. Pflicht — Placemarks ohne Namen werden übersprungen.",
+  "help.fields.coordinates": "Breite und Länge. Pflicht — entweder Point-Geometrie oder ExtendedData-Spalten.",
+  "help.fields.population":
+    "Einwohnerzahl als ganze Zahl. Pflicht — ein Placemark ohne sie wird übersprungen. Aus einer benannten Spalte (population, einwohner) oder der größten ganzzahligen Spalte.",
+  "help.fields.country":
+    "Optional. Ein kurzer Ländercode oder -name. Automatisch erkannt am Spaltennamen (country, land, iso) oder an kurzen codeartigen Werten.",
+  "help.fields.elevation":
+    "Optional. Meter über Meeresspiegel am Stadtzentrum. Wenn jede Stadt diesen Wert trägt, werden die Höhenkarten freigeschaltet.",
+  "help.fields.nameDe":
+    "Optional. Deutscher Exonym (Rome → Rom). Fehlt dieser, wird der englische Name in beiden Sprachen verwendet.",
+  "help.skipped.title": "Was übersprungen wird",
+  "help.skipped.body":
+    "Placemarks ohne Namen, ohne Koordinaten, mit Koordinaten außerhalb des Bereichs (Breite &gt; 90 oder Länge &gt; 180) oder ohne Einwohnerzahl werden fallengelassen. Die Vorschau zeigt, wie viele übersprungen wurden und warum, damit du es korrigieren und neu hochladen kannst.",
+  "help.escapes.title": "Nach dem Upload",
+  "help.escapes.body":
+    "Die Vorschau zeigt eine Punktkarte, ein paar geparste Einträge und zwei Auswege, wenn die Koordinaten aus Spalten kamen: <em>Breite/Länge tauschen</em>, wenn die Spalten falsch zugeordnet wurden, und <em>Neu lesen im anderen Format</em>, um zwischen Dezimalgrad und Grad.Minuten zu wechseln — ohne neu hochzuladen.",
+  "help.sample.title": "Beispieldatei",
+  "help.sample.body":
+    "Das eingebaute <em>Europa</em>-Set wurde aus einem KMZ importiert. Lade es im Set-Editor herunter oder finde <em>public/europa.kmz</em> im Repository als funktionierendes Beispiel.",
 
   "builder.title": "Set zusammenstellen",
   "builder.subtitle": "Filtere den Geonames-Datensatz nach Region, Bevölkerung und Land.",

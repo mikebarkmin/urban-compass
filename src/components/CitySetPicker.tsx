@@ -1,4 +1,5 @@
 import { DragEvent, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   CITY_SETS,
   CUSTOM_CITY_SET_ID,
@@ -191,7 +192,15 @@ const CitySetPicker = ({
                 {t("picker.upload.title")}
               </span>
             </div>
-            <p className="mt-1 text-xs text-chart-400">{t("home.feature.upload")}</p>
+            <p className="mt-1 text-xs text-chart-400">
+              {t("home.feature.upload")}{" "}
+              <Link
+                href="/help"
+                className="text-chart-300 underline underline-offset-2 hover:text-chart-100"
+              >
+                {t("picker.help")}
+              </Link>
+            </p>
           </div>
 
           <input
