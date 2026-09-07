@@ -124,15 +124,17 @@ const Layout = ({ children, header }: LayoutProps) => {
       )}
     >
       <header className="mb-4 flex items-center justify-between gap-2 sm:mb-6 sm:gap-3">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
-          <Link href="/" aria-label={t("app.name")}>
+        <Link
+          href="/"
+          aria-label={t("app.name")}
+          className="flex min-w-0 items-center gap-2 sm:gap-2.5"
+        >
             <span
               className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-beacon-500 text-chart-950"
               aria-hidden
             >
               <Glyph name="compass" className="h-5 w-5" />
             </span>
-          </Link>
           <div className="min-w-0">
             <div className="truncate font-display text-base leading-tight font-bold tracking-tight">
               {t("app.name")}
@@ -141,7 +143,7 @@ const Layout = ({ children, header }: LayoutProps) => {
               {t("app.tagline")}
             </div>
           </div>
-        </div>
+        </Link>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {header}
           <MuteToggle />

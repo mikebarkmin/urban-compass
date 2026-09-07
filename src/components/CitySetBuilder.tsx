@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { DragEvent, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   City,
   cityName,
@@ -9,6 +10,13 @@ import { MAX_CUSTOM_CITIES, MIN_POOL_SIZE } from "../../game/citySets";
 import { loadCities } from "@/data/citiesLoader";
 import { saveSet, updateSavedSet } from "@/data/savedSets";
 import { exportKmz } from "@/utils/kmzExport";
+import {
+  KmzParseError,
+  ParsedCitySet,
+  flipCoordinateFormat,
+  parseCityFile,
+  swapCoordinates,
+} from "@/utils/kmz";
 import { filterCities, matchingCities, type FilterParams } from "@/data/cityFilter";
 import { useLocale } from "@/i18n";
 import { Emoji } from "./Emoji";
@@ -82,6 +90,15 @@ const CitySetBuilder = ({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saved, setSaved] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  // Upload state — the collapsed builder offers a file upload as an alternative
+  // to building from the geonames dataset.
+  const [parsed, setParsed] = useState<ParsedCitySet | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadSaved, setUploadSaved] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   // When editing a saved set, the working copy of its cities. Null when the
   // builder is in build-from-scratch mode.
@@ -273,6 +290,35 @@ const CitySetBuilder = ({
 
   const extraCountries = countries.filter((c) => !COMMON_COUNTRIES.includes(c));
 
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadBusy(true);
+    setUploadError(null);
+    try {
+      const result = await parseCityFile(file);
+      if (result.cities.length < MIN_POOL_SIZE) {
+        setParsed(null);
+        setUploadError(
+          t("picker.error.tooFew", { found: result.cities.length, needed: MIN_POOL_SIZE }),
+        );
+      } else {
+        setParsed(result);
+        setUploadSaved(false);
+      }
+    } catch (cause) {
+      setParsed(null);
+      setUploadError(cause instanceof KmzParseError ? cause.message : t("picker.error.unreadable"));
+    } finally {
+      setUploadBusy(false);
+    }
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragging(false);
+    void handleFile(event.dataTransfer.files?.[0]);
+  };
+
   return (
     <div className={cx(
       "rounded-xl border p-4 transition-colors",
@@ -295,7 +341,13 @@ const CitySetBuilder = ({
           <Button
             variant="secondary"
             size="sm"
-            onClick={onEditComplete}
+            onClick={() => {
+              if (editTarget) onEditComplete?.();
+              else {
+                setEditCities(null);
+                setOpen(false);
+              }
+            }}
           >
             {t("editor.cancel")}
           </Button>
@@ -310,6 +362,203 @@ const CitySetBuilder = ({
           </Button>
         )}
       </div>
+
+      {!open && !isEditing && (
+        <div className="mt-4 space-y-3">
+          <div
+            onDragOver={(event) => {
+              event.preventDefault();
+              if (!locked) setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            className={cx(
+              "rounded-xl border border-dashed p-4 transition-colors",
+              dragging ? "border-beacon-500 bg-beacon-500/10" : "border-chart-600 bg-chart-850/40",
+              locked && "opacity-60",
+            )}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Emoji symbol="📍" alt="" className="h-5 w-5" />
+                  <span className="font-display text-sm font-semibold text-chart-100">
+                    {t("picker.upload.title")}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-chart-400">
+                  {t("home.feature.upload")}{" "}
+                  <Link
+                    href="/help"
+                    className="text-chart-300 underline underline-offset-2 hover:text-chart-100"
+                  >
+                    {t("picker.help")}
+                  </Link>
+                </p>
+              </div>
+
+              <input
+                ref={fileInput}
+                type="file"
+                accept=".kmz,.kml,application/vnd.google-earth.kmz,application/vnd.google-earth.kml+xml"
+                className="hidden"
+                onChange={(event) => {
+                  void handleFile(event.target.files?.[0]);
+                  event.target.value = "";
+                }}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={locked || uploadBusy}
+                onClick={() => fileInput.current?.click()}
+              >
+                {uploadBusy ? t("picker.upload.reading") : t("picker.upload.choose")}
+              </Button>
+            </div>
+
+            {uploadError && (
+              <p className="mt-3 rounded-lg border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-xs text-alert-500">
+                {uploadError}
+              </p>
+            )}
+          </div>
+
+          {parsed && (
+            <div className="animate-rise space-y-3 rounded-xl border border-chart-700 bg-chart-900/70 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="font-display text-sm font-semibold text-chart-100">
+                    {parsed.name}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    <Badge tone="signal">
+                      {t("picker.cities", { count: parsed.cities.length })}
+                    </Badge>
+                    <Badge tone="muted">{t(`picker.format.${parsed.coordinateFormat}`)}</Badge>
+                    {parsed.skipped.length > 0 && (
+                      <Badge tone="muted">
+                        {t("picker.skipped", { count: parsed.skipped.length })}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {parsed.coordinateFormat !== "point" && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setParsed(flipCoordinateFormat(parsed))}
+                        title={t("picker.rereadTitle")}
+                      >
+                        {t("picker.rereadAs", {
+                          format: t(
+                            parsed.coordinateFormat === "decimal"
+                              ? "picker.degmin"
+                              : "picker.decimal",
+                          ),
+                        })}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setParsed(swapCoordinates(parsed))}
+                        title={t("picker.swapTitle")}
+                      >
+                        {t("picker.swap")}
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void exportKmz(parsed.name, parsed.cities)}
+                  >
+                    {t("saved.export")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={uploadSaved}
+                    onClick={() => {
+                      saveSet(parsed.name, parsed.cities);
+                      setUploadSaved(true);
+                      onSaved?.();
+                    }}
+                  >
+                    {uploadSaved ? t("saved.saved") : t("saved.save")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setEditCities([...parsed.cities]);
+                      setName(parsed.name);
+                      setParsed(null);
+                      setUploadError(null);
+                      setOpen(true);
+                      if (!cities && !loading) {
+                        setLoading(true);
+                        setLoadError(false);
+                        void loadCities(setLoadedMb).then((loaded) => {
+                          setCities(loaded);
+                          if (loaded.length === 0) setLoadError(true);
+                          else {
+                            const max = loaded.reduce((m, c) => (c.population > m ? c.population : m), 0);
+                            setPopMax(max);
+                          }
+                          setLoading(false);
+                        });
+                      }
+                    }}
+                  >
+                    {t("editor.title")}
+                  </Button>
+                </div>
+              </div>
+
+              <MiniMap cities={parsed.cities} labels={false} height={180} />
+
+              <details className="text-xs text-chart-400">
+                <summary className="cursor-pointer text-chart-300 hover:text-chart-100">
+                  {t("picker.check")}
+                </summary>
+                <ul className="thin-scroll mt-2 max-h-40 space-y-1 overflow-y-auto pr-2">
+                  {parsed.cities.slice(0, 40).map((city) => (
+                    <li
+                      key={city.id}
+                      className="flex justify-between gap-3 border-b border-chart-800 py-1"
+                    >
+                      <span className="text-chart-200">
+                        {cityName(city, locale)}
+                        {city.country && (
+                          <span className="ml-1.5 text-chart-500">{city.country}</span>
+                        )}
+                      </span>
+                      <span className="shrink-0 font-mono text-[11px] text-chart-500">
+                        {formatCoordinate(city.latitude, "lat")} ·{" "}
+                        {formatCoordinate(city.longitude, "lon")} ·{" "}
+                        {formatPopulation(city.population)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {parsed.skipped.length > 0 && (
+                  <p className="mt-2 text-chart-500">
+                    {t("picker.skippedList", {
+                      names: parsed.skipped.slice(0, 8).map((entry) => entry.name).join(", "),
+                      more:
+                        parsed.skipped.length > 8
+                          ? t("picker.andMore", { count: parsed.skipped.length - 8 })
+                          : "",
+                    })}
+                  </p>
+                )}
+              </details>
+            </div>
+          )}
+        </div>
+      )}
 
       {open && (
         <div className="mt-4 space-y-4">
@@ -436,6 +685,11 @@ const CitySetBuilder = ({
                         updateSavedSet(editTarget.id, name, editCities);
                         onSaved?.();
                         onEditComplete?.();
+                      } else {
+                        saveSet(name || "Custom set", editCities ?? []);
+                        onSaved?.();
+                        setEditCities(null);
+                        setOpen(false);
                       }
                     }}
                   >
