@@ -20,8 +20,9 @@ import {
 import { filterCities, matchingCities, type FilterParams } from "@/data/cityFilter";
 import { useLocale } from "@/i18n";
 import { Emoji } from "./Emoji";
-import { Badge, Button, cx, inputClass } from "./ui";
+import { Badge, Button, Segmented, cx, inputClass } from "./ui";
 import MiniMap from "./MiniMap";
+import SkippedPlacemarks from "./SkippedPlacemarks";
 
 /** Continent bounding boxes the presets drop into the lat/lon fields. Rough but
  * good enough to seed a filter the host then narrows.
@@ -57,6 +58,13 @@ interface CitySetBuilderProps {
   onEditComplete?: () => void;
 }
 
+/**
+ * Where a new set comes from. The two paths are different enough — a 4 MB
+ * dataset to filter down, or a file the host already has — that the panel asks
+ * which one up front instead of hiding the upload inside the dataset builder.
+ */
+type BuildSource = "file" | "dataset";
+
 const CitySetBuilder = ({
   locked,
   inUse,
@@ -66,7 +74,7 @@ const CitySetBuilder = ({
   onEditComplete,
 }: CitySetBuilderProps) => {
   const { locale, t } = useLocale();
-  const [open, setOpen] = useState(false);
+  const [source, setSource] = useState<BuildSource>("dataset");
 
   const [cities, setCities] = useState<City[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -104,13 +112,12 @@ const CitySetBuilder = ({
   // builder is in build-from-scratch mode.
   const [editCities, setEditCities] = useState<City[] | null>(null);
 
-  // Entering edit mode: open the builder, load the dataset (for the
-  // search-to-add), and seed the working copy. Leaving: close and reset.
+  // Entering edit mode: seed the working copy and load the dataset (for the
+  // search-to-add). Leaving: reset and fall back to the default source.
   useEffect(() => {
     if (editTarget) {
       setEditCities([...editTarget.cities]);
       setName(editTarget.name);
-      setOpen(true);
       if (!cities && !loading) {
         setLoading(true);
         setLoadError(false);
@@ -126,7 +133,7 @@ const CitySetBuilder = ({
       }
     } else {
       setEditCities(null);
-      setOpen(false);
+      setSource("dataset");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editTarget]);
@@ -140,12 +147,8 @@ const CitySetBuilder = ({
     : t("builder.loading");
 
   const ensureLoaded = () => {
-    if (loading) return;
-    if (cities) {
-      setOpen(true);
-      return;
-    }
-    setOpen(true);
+    setSource("dataset");
+    if (loading || cities) return;
     setLoading(true);
     setLoadError(false);
     void loadCities(setLoadedMb).then((loaded) => {
@@ -159,6 +162,15 @@ const CitySetBuilder = ({
       setLoading(false);
     });
   };
+
+  // The dataset source is the default, so the dataset is fetched as the panel
+  // mounts rather than on a click. Skipped while locked — a player who cannot
+  // build a set has no use for 4 MB of cities — and while editing, where the
+  // effect above already loads it.
+  useEffect(() => {
+    if (!locked && !editTarget) ensureLoaded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked]);
 
   const params: FilterParams = useMemo(
     () => ({
@@ -296,15 +308,8 @@ const CitySetBuilder = ({
     setUploadError(null);
     try {
       const result = await parseCityFile(file);
-      if (result.cities.length < MIN_POOL_SIZE) {
-        setParsed(null);
-        setUploadError(
-          t("picker.error.tooFew", { found: result.cities.length, needed: MIN_POOL_SIZE }),
-        );
-      } else {
-        setParsed(result);
-        setUploadSaved(false);
-      }
+      setParsed(result);
+      setUploadSaved(false);
     } catch (cause) {
       setParsed(null);
       setUploadError(cause instanceof KmzParseError ? cause.message : t("picker.error.unreadable"));
@@ -318,6 +323,10 @@ const CitySetBuilder = ({
     setDragging(false);
     void handleFile(event.dataTransfer.files?.[0]);
   };
+
+  // An upload can parse and still not hold a playable set — often because the
+  // skipped placemarks are the missing ones, which the repair form can recover.
+  const uploadTooFew = !!parsed && parsed.cities.length < MIN_POOL_SIZE;
 
   return (
     <div className={cx(
@@ -334,7 +343,11 @@ const CitySetBuilder = ({
             {inUse && !isEditing && <Badge tone="beacon">{t("picker.upload.inUse")}</Badge>}
           </div>
           <p className="mt-1 text-xs text-chart-400">
-            {isEditing ? editTarget?.name ?? "" : t("builder.subtitle")}
+            {isEditing
+              ? editTarget?.name ?? ""
+              : loading
+                ? loadingLabel
+                : t(source === "dataset" ? "builder.subtitle" : "builder.subtitle.file")}
           </p>
         </div>
         {isEditing ? (
@@ -345,25 +358,26 @@ const CitySetBuilder = ({
               if (editTarget) onEditComplete?.();
               else {
                 setEditCities(null);
-                setOpen(false);
+                setSource("file");
               }
             }}
           >
             {t("editor.cancel")}
           </Button>
         ) : (
-          <Button
-            variant="secondary"
-            size="sm"
+          <Segmented
+            value={source}
             disabled={locked}
-            onClick={open ? () => setOpen(false) : ensureLoaded}
-          >
-            {loading ? loadingLabel : t("builder.toggle")}
-          </Button>
+            options={[
+              { value: "file" as BuildSource, label: t("builder.source.file") },
+              { value: "dataset" as BuildSource, label: t("builder.source.dataset") },
+            ]}
+            onChange={(next) => (next === "dataset" ? ensureLoaded() : setSource("file"))}
+          />
         )}
       </div>
 
-      {!open && !isEditing && (
+      {!isEditing && source === "file" && (
         <div className="mt-4 space-y-3">
           <div
             onDragOver={(event) => {
@@ -473,6 +487,7 @@ const CitySetBuilder = ({
                   <Button
                     variant="ghost"
                     size="sm"
+                    disabled={uploadTooFew}
                     onClick={() => void exportKmz(parsed.name, parsed.cities)}
                   >
                     {t("saved.export")}
@@ -480,7 +495,7 @@ const CitySetBuilder = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    disabled={uploadSaved}
+                    disabled={uploadSaved || uploadTooFew}
                     onClick={() => {
                       saveSet(parsed.name, parsed.cities);
                       setUploadSaved(true);
@@ -491,12 +506,12 @@ const CitySetBuilder = ({
                   </Button>
                   <Button
                     size="sm"
+                    disabled={uploadTooFew}
                     onClick={() => {
                       setEditCities([...parsed.cities]);
                       setName(parsed.name);
                       setParsed(null);
                       setUploadError(null);
-                      setOpen(true);
                       if (!cities && !loading) {
                         setLoading(true);
                         setLoadError(false);
@@ -517,7 +532,29 @@ const CitySetBuilder = ({
                 </div>
               </div>
 
-              <MiniMap cities={parsed.cities} labels={false} height={180} />
+              {uploadTooFew && (
+                <p className="rounded-lg border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-xs text-alert-500">
+                  {t("picker.error.tooFew", {
+                    found: parsed.cities.length,
+                    needed: MIN_POOL_SIZE,
+                  })}
+                </p>
+              )}
+
+              {parsed.skipped.length > 0 && (
+                <SkippedPlacemarks
+                  parsed={parsed}
+                  disabled={locked}
+                  onRepair={(repaired) => {
+                    setParsed(repaired);
+                    setUploadSaved(false);
+                  }}
+                />
+              )}
+
+              {parsed.cities.length > 0 && (
+                <MiniMap cities={parsed.cities} labels={false} height={180} />
+              )}
 
               <details className="text-xs text-chart-400">
                 <summary className="cursor-pointer text-chart-300 hover:text-chart-100">
@@ -543,24 +580,13 @@ const CitySetBuilder = ({
                     </li>
                   ))}
                 </ul>
-                {parsed.skipped.length > 0 && (
-                  <p className="mt-2 text-chart-500">
-                    {t("picker.skippedList", {
-                      names: parsed.skipped.slice(0, 8).map((entry) => entry.name).join(", "),
-                      more:
-                        parsed.skipped.length > 8
-                          ? t("picker.andMore", { count: parsed.skipped.length - 8 })
-                          : "",
-                    })}
-                  </p>
-                )}
               </details>
             </div>
           )}
         </div>
       )}
 
-      {open && (
+      {(isEditing || source === "dataset") && (
         <div className="mt-4 space-y-4">
           {loadError && (
             <p className="rounded-lg border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-xs text-alert-500">
@@ -689,7 +715,7 @@ const CitySetBuilder = ({
                         saveSet(name || "Custom set", editCities ?? []);
                         onSaved?.();
                         setEditCities(null);
-                        setOpen(false);
+                        setSource("file");
                       }
                     }}
                   >

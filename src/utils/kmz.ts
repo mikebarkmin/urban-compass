@@ -13,11 +13,36 @@
 
 import { City } from "../../game/cities";
 
+/** Why a placemark could not be turned into a city. */
+export type SkipReason =
+  | "no-name"
+  | "no-coordinates"
+  | "coordinates-out-of-range"
+  | "no-population";
+
+/**
+ * A placemark that was dropped, carrying whatever *was* readable. The reason is
+ * a code rather than a sentence so the UI can phrase it in the host's language,
+ * and the partial fields let the repair form open on the file's own values
+ * instead of empty boxes.
+ */
+export interface SkippedPlacemark {
+  /** Position in the document, and the key a repair is matched on. */
+  index: number;
+  /** The placemark's name, or "" when the name is the thing that is missing. */
+  name: string;
+  reason: SkipReason;
+  latitude: number | null;
+  longitude: number | null;
+  population: number | null;
+  country?: string;
+}
+
 export interface ParsedCitySet {
   name: string;
   cities: City[];
-  /** Placemarks that had to be dropped, with the reason. */
-  skipped: { name: string; reason: string }[];
+  /** Placemarks that had to be dropped, with everything a repair needs. */
+  skipped: SkippedPlacemark[];
   /** How the coordinates were read, so the UI can explain itself. */
   coordinateFormat: "point" | "decimal" | "degrees-minutes";
   /** Which ExtendedData columns were used, when they were. */
@@ -315,6 +340,37 @@ const slugify = (value: string): string =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+interface CityFields {
+  rawName: string;
+  latitude: number;
+  longitude: number;
+  population: number;
+  country?: string;
+}
+
+/**
+ * Turn a placemark's fields into a `City` with an id unique within the set.
+ * Shared by the initial parse and by repairs, so a city the host filled in by
+ * hand is built exactly like one the file supplied.
+ */
+const buildCity = (fields: CityFields, usedIds: Set<string>): City => {
+  // "Barcelona (E)" -> "Barcelona"; the bracketed hint is not part of the name.
+  const displayName = fields.rawName.replace(/\s*\([^)]*\)\s*$/, "").trim() || fields.rawName;
+
+  let id = slugify(fields.rawName) || `city-${usedIds.size + 1}`;
+  while (usedIds.has(id)) id = `${id}-${usedIds.size + 1}`;
+  usedIds.add(id);
+
+  return {
+    id,
+    name: displayName,
+    country: fields.country?.trim() || undefined,
+    latitude: Math.round(fields.latitude * 10000) / 10000,
+    longitude: Math.round(fields.longitude * 10000) / 10000,
+    population: Math.round(fields.population),
+  };
+};
+
 /** Parse a KML document into a playable city pool. */
 export const parseKml = (kml: string, fallbackName: string): ParsedCitySet => {
   const doc = new DOMParser().parseFromString(kml, "application/xml");
@@ -349,15 +405,12 @@ export const parseKml = (kml: string, fallbackName: string): ParsedCitySet => {
   const countryColumn = findCountryColumn(placemarks, usedColumns);
 
   const cities: City[] = [];
-  const skipped: ParsedCitySet["skipped"] = [];
+  const skipped: SkippedPlacemark[] = [];
   const usedIds = new Set<string>();
 
-  for (const placemark of placemarks) {
+  placemarks.forEach((placemark, index) => {
     const rawName = placemark.name.trim();
-    if (!rawName) {
-      skipped.push({ name: "(unnamed)", reason: "no name" });
-      continue;
-    }
+    const country = countryColumn ? (placemark.data[countryColumn] ?? "").trim() : "";
 
     let latitude: number | null = null;
     let longitude: number | null = null;
@@ -374,43 +427,34 @@ export const parseKml = (kml: string, fallbackName: string): ParsedCitySet => {
       }
     }
 
-    if (latitude === null || longitude === null) {
-      skipped.push({ name: rawName, reason: "no coordinates" });
-      continue;
-    }
-    if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
-      skipped.push({ name: rawName, reason: "coordinates out of range" });
-      continue;
-    }
-
     const populationColumn = detected?.columns.population;
     const population = populationColumn
       ? parseNumber(placemark.data[populationColumn] ?? "")
       : null;
 
-    if (population === null) {
-      skipped.push({ name: rawName, reason: "no population" });
-      continue;
+    // Everything read so far travels with the skip, so the repair form only has
+    // to ask for the part that is actually missing.
+    const drop = (reason: SkipReason) => {
+      skipped.push({
+        index,
+        name: rawName,
+        reason,
+        latitude,
+        longitude,
+        population,
+        ...(country ? { country } : {}),
+      });
+    };
+
+    if (!rawName) return drop("no-name");
+    if (latitude === null || longitude === null) return drop("no-coordinates");
+    if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+      return drop("coordinates-out-of-range");
     }
+    if (population === null) return drop("no-population");
 
-    // "Barcelona (E)" -> "Barcelona"; the bracketed hint is not part of the name.
-    const displayName = rawName.replace(/\s*\([^)]*\)\s*$/, "").trim() || rawName;
-
-    let id = slugify(rawName) || `city-${cities.length + 1}`;
-    while (usedIds.has(id)) id = `${id}-${cities.length + 1}`;
-    usedIds.add(id);
-
-    const country = countryColumn ? (placemark.data[countryColumn] ?? "").trim() : "";
-
-    cities.push({
-      id,
-      name: displayName,
-      country: country || undefined,
-      latitude: Math.round(latitude * 10000) / 10000,
-      longitude: Math.round(longitude * 10000) / 10000,
-      population: Math.round(population),
-    });
-  }
+    cities.push(buildCity({ rawName, latitude, longitude, population, country }, usedIds));
+  });
 
   return {
     name: documentName,
@@ -448,6 +492,13 @@ export const swapCoordinates = (parsed: ParsedCitySet): ParsedCitySet => ({
     .map((city) => ({ ...city, latitude: city.longitude, longitude: city.latitude }))
     // A swap can push a longitude past the poles; those entries are unusable.
     .filter((city) => Math.abs(city.latitude) <= 90),
+  // The skipped entries are swapped too, so the repair form keeps showing the
+  // same coordinates the preview does.
+  skipped: parsed.skipped.map((entry) => ({
+    ...entry,
+    latitude: entry.longitude,
+    longitude: entry.latitude,
+  })),
 });
 
 /**
@@ -466,6 +517,9 @@ export const flipCoordinateFormat = (parsed: ParsedCitySet): ParsedCitySet => {
         (value < 0 ? -1 : 1) *
         (Math.floor(Math.abs(value)) + ((Math.abs(value) % 1) * 60) / 100);
 
+  const round = (value: number | null) =>
+    value === null ? null : Math.round(convert(value) * 10000) / 10000;
+
   return {
     ...parsed,
     coordinateFormat: toDegreesMinutes ? "degrees-minutes" : "decimal",
@@ -474,5 +528,65 @@ export const flipCoordinateFormat = (parsed: ParsedCitySet): ParsedCitySet => {
       latitude: Math.round(convert(city.latitude) * 10000) / 10000,
       longitude: Math.round(convert(city.longitude) * 10000) / 10000,
     })),
+    skipped: parsed.skipped.map((entry) => ({
+      ...entry,
+      latitude: round(entry.latitude),
+      longitude: round(entry.longitude),
+    })),
+  };
+};
+
+/** A host-supplied fix for one skipped placemark. */
+export interface CityRepair {
+  /** The `index` of the `SkippedPlacemark` this fills in. */
+  index: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  population: number;
+  country?: string;
+}
+
+/** Whether a repair carries everything a city needs, and nothing impossible. */
+export const isRepairComplete = (repair: CityRepair): boolean =>
+  repair.name.trim() !== "" &&
+  Number.isFinite(repair.latitude) &&
+  Number.isFinite(repair.longitude) &&
+  Number.isFinite(repair.population) &&
+  Math.abs(repair.latitude) <= 90 &&
+  Math.abs(repair.longitude) <= 180 &&
+  repair.population >= 0;
+
+/**
+ * Fold host-supplied fixes back into a parsed set: each complete repair becomes
+ * a city and leaves the skipped list. Incomplete ones are ignored rather than
+ * dropped a second time, so a half-filled form keeps its rows.
+ *
+ * Repaired cities are appended, so the preview's document order still holds for
+ * everything the file supplied on its own.
+ */
+export const repairSkipped = (parsed: ParsedCitySet, repairs: CityRepair[]): ParsedCitySet => {
+  const usable = repairs.filter(isRepairComplete);
+  if (usable.length === 0) return parsed;
+
+  const usedIds = new Set(parsed.cities.map((city) => city.id));
+  const repaired = usable.map((repair) =>
+    buildCity(
+      {
+        rawName: repair.name.trim(),
+        latitude: repair.latitude,
+        longitude: repair.longitude,
+        population: repair.population,
+        country: repair.country,
+      },
+      usedIds,
+    ),
+  );
+
+  const fixed = new Set(usable.map((repair) => repair.index));
+  return {
+    ...parsed,
+    cities: [...parsed.cities, ...repaired],
+    skipped: parsed.skipped.filter((entry) => !fixed.has(entry.index)),
   };
 };
