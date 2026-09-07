@@ -15,8 +15,10 @@ The interface is available in **English and German**, switchable in the header;
 city names carry a German exonym where one exists, so the board reads *Athen*
 and *Zürich* rather than *Athens* and *Zurich*.
 
-There is also a [solo daily puzzle](#the-daily-puzzle) for when nobody else is
-around.
+There are two solo modes for when nobody else is around: a
+[daily puzzle](#the-daily-puzzle) everybody gets the same board of, and an
+[expedition](#expeditions) you configure yourself and play until your lives run
+out.
 
 For implementation details, see [DOCUMENTATION.md](DOCUMENTATION.md).
 To contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -148,6 +150,60 @@ The **archive** at `/archive` lists every puzzle since the first one, newest
 first, grouped by month. A day you have finished shows its mark pattern and
 score; anything else is a link to go and play it. Authored days carry their
 theme as a badge, and today's entry is highlighted.
+
+## Expeditions
+
+`/expedition` is the solo mode you set up yourself. You pick the cards — only
+_easternmost_ and _westernmost_ if that is the thing you want to drill — and you
+pick where in the world to be tested: the whole gazetteer, one continent, or a
+single country by its ISO-2 code. The cities come from `public/cities5000.json`
+rather than a built-in set, trimmed to the 4,000 biggest in the region, so
+"Portugal" and "the world" are both one click. A **population floor** — Any,
+50k+, 200k+, or 1M+ — is the difficulty dial: a higher floor keeps the board
+among better-known cities, which is easier when the region is small enough to
+reach down to the gazetteer's 5,000-person bottom.
+
+Then it is **three lives**, and a round that was not perfect costs one. A near
+miss still counts towards your card total, but only six out of six is free.
+
+What makes it a run rather than a drill is that each round is drawn from a
+**tighter circle** than the last. Round one spans the region — 6,300 km on the
+world — and the radius closes in by a third each round, down to a floor of 60 km:
+
+| Round | 1 | 5 | 10 | 15 | 18+ |
+| --- | --- | --- | --- | --- | --- |
+| Radius (world) | 6,346 km | 1,700 km | 380 km | 80 km | 60 km |
+
+An anchor city is picked at random and the board is drawn from whatever lies
+inside that circle, so by round ten "easternmost" is a question about eight
+towns in the same province. A circle that comes up empty is retried against
+another anchor before it is widened, which is how a sparse region degrades to a
+wider board rather than to no board.
+
+When the last life goes you get a share card — one square per round, green for a
+perfect one and red for one that cost a life:
+
+```
+Urban Compass · Expedition — Europe
+Round 9 · 47/54 cards
+🟩🟩🟥🟩🟩🟩🟥🟩🟥
+https://…/expedition/?r=k3f9x2&region=continent.europe&cards=nsewPp&pop=50000
+```
+
+The link carries the seed and the settings, so whoever opens it plays *the same
+expedition* rather than a different one with the same name — the boards are
+rebuilt from the seed rather than stored. That is also how a run survives a
+reload: the run in progress is kept in `localStorage`.
+
+`/expedition` itself always opens on the planning screen, with a run in progress
+offered at the top of it rather than resumed on the spot — arriving at the mode
+and being dropped into a board you did not ask for is not a choice. A run link
+(`?r=…`) is the exception: it names a specific expedition, so it starts one.
+
+The area cards are not on the table here — the gazetteer carries no area figure.
+The altitude pair is, and switching it on narrows the pool to cities that carry
+an elevation reading, for the same all-or-nothing reason the built-in sets gate
+it.
 
 ## City sets
 

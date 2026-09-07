@@ -261,6 +261,76 @@ on a board share a name. Where a theme could not meet that bar it was re-cut
 rather than shipped: New England alone puts both the northern and the eastern
 answer in Maine, so Thanksgiving became the Pilgrims' crossing instead.
 
+## The expedition
+
+`src/utils/expedition.ts` holds the whole mode as pure functions; the three
+components under `src/components/Expedition*.tsx` are the screen around them.
+Nothing in `party/` or `game/logic.ts` is involved — like the daily, it is a
+solo mode with no server.
+
+The pool is the one place it differs from the daily. The daily draws from a
+built-in set, which costs no round trip; an expedition has to be able to say
+"Iceland", so it takes the same `loadCities()` fetch that `/sets` makes (1.6 MB
+over the wire, cached for the session) and filters it with `matchingCities` —
+`CONTINENT_BOUNDS` for a continent, a country code for a country, nothing for
+the world. `src/data/regions.ts` holds those bounds and the country chips, which
+the city-set builder shares. The result is trimmed to the 4,000 biggest cities in
+the region, which is one rule that behaves sensibly everywhere: worldwide it is
+the best-known cities, and for a small country it is all of them.
+
+A population floor (`popMin`, defaulting to 0) sits between the region filter and
+the trim. `EXPEDITION_POP_TIERS` offers four steps — Any, 50k+, 200k+, 1M+ — and
+a higher floor keeps the board among better-known cities, which is the mode's
+difficulty dial. On a wide region the low tiers do nothing because the 4,000-city
+trim already cuts the world down to its largest; they earn their keep on a single
+country, where the pool is small enough to reach down to the gazetteer's own
+5,000-person floor.
+
+### The ramp
+
+`radiusKm(n, start)` is `start · 0.72ⁿ⁻¹`, floored at 60 km, with `start` half
+the diagonal of the pool's bounding box. `buildExpeditionRound` picks a random
+anchor city, takes everything within that radius of it, and hands the result to
+the existing `drawBoard` in balanced mode.
+
+The retry structure is the interesting part. A tight circle over the Sahara has
+nothing in it, so a failed anchor is retried — thirty of them — before the radius
+is widened by half, six times over. That ordering matters: widening first would
+quietly undo the ramp everywhere, while retrying first only widens where the
+region genuinely cannot fill a board. A board is also rejected if two cities
+share a name or a card is decided by a tie, the same two bars
+`scripts/check-daily.mjs` holds the authored dailies to.
+
+A harness over nine region/card combinations (world, Africa, Oceania, Europe with
+two cards, Portugal, Iceland, Luxembourg, Singapore with one card), twenty rounds
+each, produces a full board every time with no tie and no repeated name. The
+world ramps from a 9,148 km spread on round one to 59 km on round twenty. Only a
+region already smaller than the floor — Singapore's 38 cities inside 27 km — cannot
+tighten, which is inherent rather than a failure.
+
+### A run
+
+Three lives; `revealRound` spends one on any round that was not perfect, and the
+run ends at zero. `roundFor(pool, start, config, seed, number)` seeds
+`mulberry32` from `urban-compass/expedition/<seed>/<round>`, so a board is a
+function of the run and its round number and nothing is stored: `localStorage`
+keeps the seed, the settings, the lives and the round, and the boards come back
+from those. That is what makes both the reload and the share link work, and it is
+why the share link is a challenge — `runQuery` puts the seed and the settings in
+the URL, and `runFromQuery` reads them back, dropping anything malformed rather
+than erroring.
+
+`Expedition.tsx` reads those two sources in a fixed order: a run link starts that
+run, and everything else lands on the planning screen with the saved run offered
+as a card on it. Resuming automatically was the first cut and it was wrong — it
+made the region and card pickers unreachable for anyone with a run still open,
+which is most of the time.
+
+The area cards cannot be offered at all, because the gazetteer has no area
+column. Altitude can, and `buildPool` drops cities without an elevation reading
+when one is enabled — a pool where half the cities had no figure would hand
+"lowest" to whichever city was missing one.
+
 ## KMZ import and export
 
 `src/utils/kmz.ts` unpacks the uploaded archive (a small ZIP reader over
@@ -311,11 +381,13 @@ The project is a monorepo holding both the client (Next.js) and the server
 | `game/citySets.ts`        | Built-in pools and validation for uploaded ones             |
 | `game/avatar.ts`          | The avatar model: hues, symbols, randomization             |
 | `party/index.ts`          | The PartyKit room: applies actions, runs the clock, broadcasts state |
-| `src/components/`         | Lobby, Board, Results, GameOver, Daily, Archive, ActionFlash, Confetti and the shared UI primitives |
+| `src/components/`         | Lobby, Board, Results, GameOver, Daily, Expedition, Archive, ActionFlash, Confetti and the shared UI primitives |
 | `src/hooks/useGameRoom`   | The client's socket: `gameState` in, `dispatch` out         |
 | `src/hooks/useSound`      | Synthesised audio cues and haptics, the mute toggle         |
 | `src/hooks/useWakeLock`   | Holds the screen awake while a turn is live                 |
 | `src/utils/daily.ts`      | The daily puzzle: seeding, marking, streaks, share text      |
+| `src/utils/expedition.ts` | The expedition: region pools, the closing-in ramp, lives, the seeded run and its share link |
+| `src/data/regions.ts`     | Continent bounding boxes and the country chips, shared by the builder and the expedition |
 | `src/utils/kmz.ts`        | KMZ/KML import: archive unpack, placemark parsing, coordinate detection |
 | `src/utils/kmzExport.ts`  | KMZ export: builds a KMZ from a city set in the browser     |
 | `src/i18n/`               | The English and German dictionaries and the locale provider |

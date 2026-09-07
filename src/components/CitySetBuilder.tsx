@@ -18,30 +18,17 @@ import {
   swapCoordinates,
 } from "@/utils/kmz";
 import { filterCities, matchingCities, type FilterParams } from "@/data/cityFilter";
+import {
+  COMMON_COUNTRIES,
+  CONTINENT_BOUNDS,
+  CONTINENT_KEYS,
+  type ContinentKey,
+} from "@/data/regions";
 import { useLocale } from "@/i18n";
 import { Emoji } from "./Emoji";
 import { Badge, Button, Segmented, cx, inputClass } from "./ui";
 import MiniMap from "./MiniMap";
 import SkippedPlacemarks from "./SkippedPlacemarks";
-
-/** Continent bounding boxes the presets drop into the lat/lon fields. Rough but
- * good enough to seed a filter the host then narrows.
- */
-const CONTINENT_BOUNDS: Record<string, { latMin: number; latMax: number; lonMin: number; lonMax: number }> = {
-  europe: { latMin: 36, latMax: 71, lonMin: -25, lonMax: 45 },
-  africa: { latMin: -35, latMax: 37, lonMin: -18, lonMax: 52 },
-  asia: { latMin: 5, latMax: 77, lonMin: 26, lonMax: 180 },
-  northAmerica: { latMin: 14, latMax: 83, lonMin: -170, lonMax: -52 },
-  southAmerica: { latMin: -56, latMax: 13, lonMin: -82, lonMax: -34 },
-  oceania: { latMin: -47, latMax: 5, lonMin: 110, lonMax: 180 },
-};
-
-/** Country codes offered as one-click chips, in display order. */
-const COMMON_COUNTRIES = [
-  "US", "DE", "FR", "GB", "IT", "ES", "RU", "CN", "IN", "BR",
-  "JP", "CA", "AU", "MX", "NL", "PL", "TR", "ID", "EG", "AR",
-  "ZA", "KR", "SE", "NO", "AT", "CH", "PT", "GR", "UA",
-];
 
 interface CitySetBuilderProps {
   locked?: boolean;
@@ -263,9 +250,8 @@ const CitySetBuilder = ({
 
   const editTooFew = (editCities?.length ?? 0) < MIN_POOL_SIZE;
 
-  const applyContinent = (key: string) => {
+  const applyContinent = (key: ContinentKey) => {
     const bounds = CONTINENT_BOUNDS[key];
-    if (!bounds) return;
     setLatMin(bounds.latMin);
     setLatMax(bounds.latMax);
     setLonMin(bounds.lonMin);
@@ -746,7 +732,7 @@ const CitySetBuilder = ({
             <>
               {/* Continent + country presets */}
               <div className="flex flex-wrap gap-1.5">
-                {Object.entries(CONTINENT_BOUNDS).map(([key]) => (
+                {CONTINENT_KEYS.map((key) => (
                   <button
                     key={key}
                     type="button"

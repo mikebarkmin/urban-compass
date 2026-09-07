@@ -116,6 +116,7 @@ export default function Home() {
 
               <div className="mt-8 space-y-2">
                 {[
+                  ["/expedition", "🧭", t("home.expedition.title"), t("home.expedition.sub")],
                   ["/daily", "📅", t("home.daily.title"), t("home.daily.sub")],
                   ["/archive", "🗄️", t("archive.title"), t("archive.lede")],
                   ["/sets", "🛠️", t("sets.title"), t("sets.lede")],
