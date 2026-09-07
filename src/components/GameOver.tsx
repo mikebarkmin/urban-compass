@@ -65,6 +65,30 @@ const GameOver = ({ gameState, username, roomId, dispatch }: GameOverProps) => {
   const champions = top ? ranked.filter((user) => user.score === top.score) : [];
   const drawn = champions.length > 1;
 
+  // Group tied players into places using standard competition ranking
+  // (1, 2, 2, 4) so players with the same score share a podium step.
+  const places: { rank: number; users: typeof ranked }[] = [];
+  for (const user of ranked) {
+    const last = places[places.length - 1];
+    if (last && last.users[0].score === user.score) {
+      last.users.push(user);
+    } else {
+      const rank = places.reduce((sum, p) => sum + p.users.length, 0) + 1;
+      places.push({ rank, users: [user] });
+    }
+  }
+  const podiumPlaces = places.slice(0, 3);
+  const offPodium = places.slice(3).flatMap((p) => p.users.map((user) => ({ user, rank: p.rank })));
+
+  // Second and third stand either side of the winner, tallest in the middle.
+  // Tied players share the same step, so a two-way tie for first puts both on
+  // the gold platform rather than one on gold and one on silver.
+  const podiumSlots = [1, 0, 2]
+    .filter((i) => podiumPlaces[i])
+    .flatMap((i) =>
+      podiumPlaces[i].users.map((user) => ({ user, placeIdx: i, rank: podiumPlaces[i].rank })),
+    );
+
   // Fire the fanfare and a confetti burst once on mount.
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   useEffect(() => {
@@ -72,15 +96,6 @@ const GameOver = ({ gameState, username, roomId, dispatch }: GameOverProps) => {
     setConfettiTrigger(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Second and third stand either side of the winner, tallest in the middle.
-  // Only the places that actually exist get a column, so a two-player game does
-  // not leave a hole where the bronze step would be.
-  const podium = [
-    { user: ranked[1], rank: 1 },
-    { user: ranked[0], rank: 0 },
-    { user: ranked[2], rank: 2 },
-  ].filter((slot): slot is { user: (typeof ranked)[number]; rank: number } => !!slot.user);
 
   return (
     <div className="animate-rise rounded-xl border border-beacon-500/40 bg-beacon-500/[0.07] p-5">
@@ -135,8 +150,8 @@ const GameOver = ({ gameState, username, roomId, dispatch }: GameOverProps) => {
 
       {ranked.length > 1 && (
         <div className="mt-5 flex items-end justify-center gap-2 border-b border-chart-600 sm:gap-4">
-          {podium.map(({ user, rank }) => {
-            const place = PODIUM[rank];
+          {podiumSlots.map(({ user, placeIdx, rank }) => {
+            const place = PODIUM[placeIdx];
 
             return (
               <div key={user.id} className="flex w-24 flex-col items-center gap-1.5 sm:w-28">
@@ -145,16 +160,16 @@ const GameOver = ({ gameState, username, roomId, dispatch }: GameOverProps) => {
                     "grid h-6 w-6 place-items-center rounded-full border font-display text-xs font-bold",
                     place.badge,
                   )}
-                  title={t("gameover.place", { rank: rank + 1 })}
+                  title={t("gameover.place", { rank })}
                 >
-                  {rank + 1}
+                  {rank}
                 </span>
                 <Avatar
                   name={user.id}
                   seed={user.id + roomId}
                   avatar={user.avatar}
-                  size={rank === 0 ? 40 : 32}
-                  ring={rank === 0 ? "active" : null}
+                  size={placeIdx === 0 ? 40 : 32}
+                  ring={placeIdx === 0 ? "active" : null}
                 />
                 <span className="w-full truncate text-center text-xs text-chart-200">
                   {user.id}
@@ -177,11 +192,11 @@ const GameOver = ({ gameState, username, roomId, dispatch }: GameOverProps) => {
         </div>
       )}
 
-      {ranked.length > 3 && (
+      {offPodium.length > 0 && (
         <div className="mt-4 flex flex-wrap justify-center gap-1.5">
-          {ranked.slice(3).map((user, index) => (
+          {offPodium.map(({ user, rank }) => (
             <Badge key={user.id} tone="muted">
-              {index + 4}. {user.id} · {user.score}
+              {rank}. {user.id} · {user.score}
             </Badge>
           ))}
         </div>
