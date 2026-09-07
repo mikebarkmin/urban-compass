@@ -26,6 +26,13 @@ const OUTPUT = join(root, "game", "data", "dailyBoards.generated.json");
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
+ * Whether a gazetteer elevation is a real reading. Rows built before
+ * build-cities.mjs learned to drop it still carry GeoNames' -9999 "no data"
+ * sentinel, and nothing below the Dead Sea is a real settlement.
+ */
+const usableElevation = (elevation) => elevation !== null && elevation > -500;
+
+/**
  * A compact gazetteer row, in column order:
  * [geonameid, countryCode, latitude, longitude, population, elevation, name, nameDe]
  */
@@ -35,7 +42,7 @@ const toCity = (row) => ({
   latitude: row[2],
   longitude: row[3],
   population: row[4],
-  ...(row[5] !== null ? { elevation: row[5] } : {}),
+  ...(usableElevation(row[5]) ? { elevation: row[5] } : {}),
   name: row[6],
   ...(row[7] ? { nameDe: row[7] } : {}),
 });

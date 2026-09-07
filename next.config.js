@@ -18,6 +18,16 @@ require("node:child_process").execFileSync(
   { stdio: "inherit" },
 );
 
+// Resolve built-in set definitions (game/data/sets/*.json) against the gazetteer
+// (public/cities5000.json) before compilation, so game/data/builtSets.gen.ts
+// and game/data/setDefsIndex.gen.ts are always in step. Same pattern as the
+// daily build above — every next dev and next build does it, no step to forget.
+require("node:child_process").execFileSync(
+  process.execPath,
+  [require("node:path").join(__dirname, "scripts", "build-sets.mjs")],
+  { stdio: "inherit" },
+);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,

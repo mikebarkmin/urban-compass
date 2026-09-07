@@ -1,13 +1,14 @@
 // The pools of cities a host can pick from before starting a game.
+//
+// Built-in sets are defined as one JSON file per set in game/data/sets/,
+// each a list of geonameids. Their City[] arrays and a metadata index are
+// resolved at build time by scripts/build-sets.mjs against
+// public/cities5000.json. This avoids duplicating city data across sets and
+// picks up the GeoNames translations (name, nameDe) automatically.
 
 import { City, Category, supportedCategories } from "./cities";
-import { germanCities } from "./data/germany";
-import { europeanCities } from "./data/europe";
-import { worldCities } from "./data/world";
-import { europeEasyCities } from "./data/europeEasy";
-import { europeHardCities } from "./data/europeHard";
-import { worldEasyCities } from "./data/worldEasy";
-import { worldHardCities } from "./data/worldHard";
+import { setDefsIndex } from "./data/setDefsIndex.gen";
+import { builtSetCities } from "./data/builtSets.gen";
 
 /**
  * Roughly how much geography a set asks of you. `easy` is household names,
@@ -27,57 +28,15 @@ export interface CitySet {
   cities: City[];
 }
 
-export const CITY_SETS: CitySet[] = [
-  {
-    id: "europe-easy",
-    name: "Europe · the big names",
-    difficulty: "easy",
-    icon: "🇪🇺",
-    cities: europeEasyCities,
-  },
-  {
-    id: "world-easy",
-    name: "World · the big names",
-    difficulty: "easy",
-    icon: "🌍",
-    cities: worldEasyCities,
-  },
-  {
-    id: "germany",
-    name: "Germany",
-    difficulty: "standard",
-    icon: "🇩🇪",
-    cities: germanCities,
-  },
-  {
-    id: "europe",
-    name: "Europe",
-    difficulty: "standard",
-    icon: "🗺️",
-    cities: europeanCities,
-  },
-  {
-    id: "world",
-    name: "World",
-    difficulty: "standard",
-    icon: "🌐",
-    cities: worldCities,
-  },
-  {
-    id: "europe-hard",
-    name: "Europe · the far corners",
-    difficulty: "hard",
-    icon: "🧭",
-    cities: europeHardCities,
-  },
-  {
-    id: "world-hard",
-    name: "World · the ends of the earth",
-    difficulty: "hard",
-    icon: "🏔️",
-    cities: worldHardCities,
-  },
-];
+export const CITY_SETS: CitySet[] = Object.entries(setDefsIndex).map(
+  ([id, meta]) => ({
+    id,
+    name: meta.name,
+    difficulty: meta.difficulty,
+    icon: meta.icon,
+    cities: builtSetCities[id],
+  }),
+);
 
 export const DEFAULT_CITY_SET_ID = "europe-easy";
 

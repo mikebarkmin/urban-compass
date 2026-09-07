@@ -42,3 +42,7 @@ next-env.d.ts
 
 # Joined from game/data/daily/ + public/cities5000.json by scripts/build-daily.mjs
 /game/data/dailyBoards.generated.json
+
+# Resolved from game/data/sets/*.json + public/cities5000.json by scripts/build-sets.mjs
+/game/data/builtSets.gen.ts
+/game/data/setDefsIndex.gen.ts

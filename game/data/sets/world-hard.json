@@ -1,0 +1,72 @@
+{
+  "name": "World · the ends of the earth",
+  "difficulty": "hard",
+  "icon": "🏔️",
+  "cities": [
+    "1497337",
+    "2127202",
+    "5983720",
+    "3421319",
+    "2013159",
+    "3833367",
+    "3874787",
+    "2198148",
+    "4033936",
+    "2139521",
+    "2088122",
+    "2108502",
+    "4035413",
+    "4032402",
+    "4044012",
+    "2113779",
+    "1282027",
+    "1252416",
+    "1283240",
+    "1280737",
+    "2028462",
+    "1528675",
+    "1221874",
+    "162183",
+    "587084",
+    "284899",
+    "3652462",
+    "3941584",
+    "3907584",
+    "344979",
+    "343300",
+    "1070940",
+    "3352136",
+    "223817",
+    "2449067"
+  ],
+  "overrides": {
+    "alert": {
+      "id": "alert",
+      "name": "Alert",
+      "country": "CA",
+      "latitude": 82.5018,
+      "longitude": -62.3481,
+      "population": 60,
+      "elevation": 30
+    },
+    "utqiagvik": {
+      "id": "utqiagvik",
+      "name": "Utqiaġvik",
+      "country": "US",
+      "latitude": 71.2906,
+      "longitude": -156.7887,
+      "population": 4900,
+      "elevation": 3
+    },
+    "mcmurdo": {
+      "id": "mcmurdo",
+      "name": "McMurdo Station",
+      "nameDe": "McMurdo-Station",
+      "country": "AQ",
+      "latitude": -77.8419,
+      "longitude": 166.6863,
+      "population": 1000,
+      "elevation": 10
+    }
+  }
+}

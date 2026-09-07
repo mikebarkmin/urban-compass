@@ -72,6 +72,10 @@ const parseCity = (line) => {
   const dem = Number(demRaw);
   if (Number.isFinite(elev) && elev !== 0) elevation = Math.round(elev);
   else if (Number.isFinite(dem) && dem !== 0) elevation = Math.round(dem);
+  // GeoNames writes -9999 into dem where it has no data for the tile. Nothing
+  // below the Dead Sea is a real settlement, so treat it as missing — the same
+  // bound sanitizeCityPool applies to uploaded pools.
+  if (elevation !== null && elevation <= -500) elevation = null;
 
   return [
     c[0], // geonameid (kept as a string)

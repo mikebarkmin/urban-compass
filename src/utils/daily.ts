@@ -10,7 +10,7 @@ import {
   supportedCategories,
 } from "../../game/cities";
 import { MIN_POOL_SIZE, sanitizeCityPool } from "../../game/citySets";
-import { europeanCities } from "../../game/data/europe";
+import { builtSetCities } from "../../game/data/builtSets.gen";
 import authoredDays from "../../game/data/dailyBoards.generated.json";
 
 /**
@@ -191,7 +191,7 @@ export const buildPuzzle = (key: string): DailyPuzzle => {
   const cities = authored
     ? authored.cities
     : drawBoard(
-        europeanCities,
+        builtSetCities[DAILY_SET_ID],
         DAILY_CITY_COUNT,
         "balanced",
         mulberry32(seedFromString(`urban-compass/${key}`)),
