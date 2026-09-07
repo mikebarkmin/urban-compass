@@ -22,6 +22,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = join(root, "game", "data", "daily");
 const GAZETTEER = join(root, "public", "cities5000.json");
 const OUTPUT = join(root, "game", "data", "dailyBoards.generated.json");
+const ELEVATIONS = join(root, "game", "data", "elevations.json");
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -31,6 +32,13 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
  * sentinel, and nothing below the Dead Sea is a real settlement.
  */
 const usableElevation = (elevation) => elevation !== null && elevation > -500;
+
+/** geonameid → metres, for the cities GeoNames has no reading for. */
+const elevationPatches = JSON.parse(await readFile(ELEVATIONS, "utf8"));
+
+/** The gazetteer's figure, or the patched one where it has none. */
+const elevationOf = (row) =>
+  usableElevation(row[5]) ? row[5] : elevationPatches[row[0]]?.elevation;
 
 /**
  * A compact gazetteer row, in column order:
@@ -42,7 +50,7 @@ const toCity = (row) => ({
   latitude: row[2],
   longitude: row[3],
   population: row[4],
-  ...(usableElevation(row[5]) ? { elevation: row[5] } : {}),
+  ...(elevationOf(row) !== undefined ? { elevation: elevationOf(row) } : {}),
   name: row[6],
   ...(row[7] ? { nameDe: row[7] } : {}),
 });

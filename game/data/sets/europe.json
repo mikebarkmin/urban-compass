@@ -100,7 +100,8 @@
       "country": "N",
       "latitude": 67.8833,
       "longitude": 12.9833,
-      "population": 100
+      "population": 100,
+      "elevation": 5
     }
   }
 }

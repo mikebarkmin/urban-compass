@@ -1,0 +1,52 @@
+{
+  "_README": [
+    "Elevations for cities GeoNames has no reading for. Its dem column stores",
+    "-9999 where the 90m SRTM tile is unusable — coastal points and small",
+    "islands, mostly — and scripts/build-cities.mjs drops that rather than",
+    "letting it pass as a real figure. A pool needs the elevation on every one",
+    "of its cities before the altitude cards are offered at all, so one gap",
+    "costs the whole set its highest/lowest pair. These fill the gaps.",
+    "",
+    "Keyed by geonameid. Applied by build-sets.mjs and build-daily.mjs, both",
+    "of which warn about an entry that is never used, so the file cannot",
+    "quietly rot as sets change or a later gazetteer build supplies the",
+    "reading itself. Figures are approximate published city-centre values, in",
+    "metres, in the same spirit as the hand-written sets they replaced."
+  ],
+
+  "734077": {
+    "name": "Thessaloníki",
+    "elevation": 8,
+    "note": "City centre at the waterfront; the municipality climbs to ~40 m."
+  },
+  "2198148": {
+    "name": "Suva",
+    "elevation": 6,
+    "note": "Peninsula centre. Published figures range 0-60 m across the hills behind it."
+  },
+  "2633274": {
+    "name": "Akureyri",
+    "elevation": 40,
+    "note": "Statistics Iceland's figure for the town centre."
+  },
+  "2644605": {
+    "name": "Lerwick",
+    "elevation": 8,
+    "note": "Harbour and town centre; the town average across the slope is nearer 39 m."
+  },
+  "2993458": {
+    "name": "Monaco",
+    "elevation": 16,
+    "note": "Commonly published figure for the commune. Monaco-Ville's rock is ~60 m."
+  },
+  "3133895": {
+    "name": "Tromsø",
+    "elevation": 10,
+    "note": "City centre on Tromsøya, at the strait."
+  },
+  "3874787": {
+    "name": "Punta Arenas",
+    "elevation": 25,
+    "note": "City centre above the Strait of Magellan."
+  }
+}

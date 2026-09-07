@@ -30,6 +30,15 @@ const cities5000 = JSON.parse(
   await readFile(join(root, "public", "cities5000.json"), "utf8"),
 );
 
+// geonameid → metres, for the cities GeoNames has no reading for. See the
+// _README in the file itself.
+const elevationPatches = JSON.parse(
+  await readFile(join(root, "game", "data", "elevations.json"), "utf8"),
+);
+const unusedPatches = new Set(
+  Object.keys(elevationPatches).filter((key) => !key.startsWith("_")),
+);
+
 /**
  * Whether a gazetteer elevation is a real reading. Rows built before
  * build-cities.mjs learned to drop it still carry GeoNames' -9999 "no data"
@@ -63,7 +72,12 @@ for (const def of setDefs) {
     const [, country, latitude, longitude, population, elevation, name, nameDe] = row;
     const city = { id: row[0], name, latitude, longitude, population };
     if (country) city.country = country;
-    if (usableElevation(elevation)) city.elevation = elevation;
+    if (usableElevation(elevation)) {
+      city.elevation = elevation;
+    } else if (elevationPatches[geonameId]) {
+      city.elevation = elevationPatches[geonameId].elevation;
+      unusedPatches.delete(geonameId);
+    }
     if (nameDe) city.nameDe = nameDe;
     cities.push(city);
   }
@@ -76,6 +90,25 @@ for (const def of setDefs) {
   }
 
   sets[def.id] = cities;
+}
+
+// A set is only offered the altitude cards when every city carries the figure,
+// so a single gap is worth naming rather than leaving to be noticed in play.
+for (const [id, cities] of Object.entries(sets)) {
+  const gaps = cities.filter((city) => city.elevation === undefined);
+  if (gaps.length > 0) {
+    warnings.push(
+      `${id}: no elevation for ${gaps.map((c) => c.name).join(", ")} — ` +
+        `the set cannot offer the altitude cards until game/data/elevations.json covers them`,
+    );
+  }
+}
+
+for (const id of unusedPatches) {
+  warnings.push(
+    `game/data/elevations.json: the entry for ${elevationPatches[id].name} (${id}) is unused — ` +
+      `no set needs it, or the gazetteer now carries the figure itself`,
+  );
 }
 
 if (warnings.length > 0) {
