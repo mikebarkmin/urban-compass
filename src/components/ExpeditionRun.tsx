@@ -42,30 +42,15 @@ import { shareOrCopy } from "@/utils";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useSound } from "@/hooks/useSound";
 import { useLocale } from "@/i18n";
-import { Badge, Button, Panel, cx } from "./ui";
-import { useFixedTopBar } from "./Layout";
+import { Badge, Button, Panel, cx, useCountUp, useReducedMotion } from "./ui";
+import { MuteToggle, useFixedTopBar } from "./Layout";
 import { MARK_STYLE, MarkSquare } from "./MarkSquare";
 import { CategoryIcon, Glyph } from "./Glyph";
 import CategoryCard from "./CategoryCard";
 import MiniMap from "./MiniMap";
 import Confetti from "./Confetti";
 import { regionLabel } from "./ExpeditionSetup";
-
-/**
- * One life, drawn rather than typed. The heart emoji has no Twemoji file in
- * `public/emoji/`, and the system one differs enough between platforms that a
- * row of them would not read as a row — the same reason the daily draws its
- * result squares (see `MarkSquare`).
- */
-const Life = ({ spent }: { spent: boolean }) => (
-  <span
-    className={cx(
-      "inline-block h-2.5 w-2.5 shrink-0 rounded-full transition-colors",
-      spent ? "bg-chart-700" : "bg-alert-500",
-    )}
-    aria-hidden
-  />
-);
+import { ClimbDial, Crossroads, LifeRow, PotStage } from "./ExpeditionStage";
 
 /** The colour a finished round leaves on the strip, matching the share squares. */
 const ENDING_FILL: Record<RoundEnding, string> = {
@@ -84,13 +69,6 @@ const RoundPip = ({ ending }: { ending: RoundEnding }) => (
     className={cx("inline-block h-3.5 w-3.5 shrink-0 rounded-[3px]", ENDING_FILL[ending])}
     aria-hidden
   />
-);
-
-const Stat = ({ label, value }: { label: string; value: string | number }) => (
-  <div className="flex-1 text-center">
-    <div className="font-display text-xl font-bold text-chart-100 tabular-nums">{value}</div>
-    <div className="text-[10px] tracking-[0.12em] text-chart-500 uppercase">{label}</div>
-  </div>
 );
 
 interface ExpeditionRunProps {
@@ -133,11 +111,22 @@ const ExpeditionRun = ({
 }: ExpeditionRunProps) => {
   const { locale, t } = useLocale();
   const { play } = useSound();
-  useFixedTopBar();
+  // The run carries its own bar, and mute with it, so the site header goes.
+  useFixedTopBar(true);
 
   const [run, setRun] = useState<Run>(() => restored ?? startRun(seed, config, startRadius));
   const [copied, setCopied] = useState(false);
   const [celebrate, setCelebrate] = useState(0);
+  /** The beat between a card landing and the game asking for the next bet. */
+  const [beat, setBeat] = useState(false);
+  /** The crossroads, stepped aside so the board underneath can be studied. */
+  const [peeking, setPeeking] = useState(false);
+  /** What the card just banked, floated off the stack. Keyed so it replays. */
+  const [gain, setGain] = useState<{ value: number; key: number } | null>(null);
+  /** Bumped on a bust, to shake the board that took the stack. */
+  const [shake, setShake] = useState(0);
+  const reduced = useReducedMotion();
+  const beatTimer = useRef<number | null>(null);
 
   // A round in play is worth keeping the screen awake for; a finished run is not.
   useWakeLock(!run.over);
@@ -173,6 +162,9 @@ const ExpeditionRun = ({
   const record = run.history[run.history.length - 1];
   const onTable = ended ? (record?.hits ?? 0) : streak;
   const worth = ended ? (record?.score ?? 0) : banked;
+  // A bust pays nothing, but the stage should show what it cost rather than a
+  // zero: the number the round was standing at, struck through.
+  const potShown = ended && run.ending === "bust" ? roundScore(onTable) : worth;
 
   // The run is the only thing worth persisting: the boards come back from the
   // seed. A finished run is folded into the record and stops being active.
@@ -192,6 +184,22 @@ const ExpeditionRun = ({
     }
   }, [run.summited, play]);
 
+  // A reveal that resolves into the next question in the same frame is not a
+  // reveal. Hold the verdict on screen before the crossroads takes the screen.
+  const holdBeat = () => {
+    if (reduced) return;
+    setBeat(true);
+    if (beatTimer.current !== null) window.clearTimeout(beatTimer.current);
+    beatTimer.current = window.setTimeout(() => setBeat(false), 750);
+  };
+
+  useEffect(
+    () => () => {
+      if (beatTimer.current !== null) window.clearTimeout(beatTimer.current);
+    },
+    [],
+  );
+
   const assign = (cityId: string) => {
     if (!inPlay) return;
     const card = inPlay;
@@ -203,6 +211,15 @@ const ExpeditionRun = ({
     if (!ready) return;
     const next = settleCard(run, round);
     setRun(next);
+    setPeeking(false);
+
+    if (next.phase === "crossroads") {
+      // The card landed: the stack just grew by what this card was worth.
+      setGain({ value: pushValue(streak), key: Date.now() });
+      holdBeat();
+    } else if (next.ending === "bust") {
+      setShake((count) => count + 1);
+    }
 
     if (next.over) play("fanfare");
     else if (next.phase === "crossroads") play("chime");
@@ -212,6 +229,7 @@ const ExpeditionRun = ({
   const bank = () => {
     const next = bankRound(run);
     setRun(next);
+    setPeeking(false);
     play("chime");
     // A round worth walking away from is worth a bit of noise. Confetti skips
     // itself under reduced motion, so no guard is needed here.
@@ -220,6 +238,7 @@ const ExpeditionRun = ({
 
   const push = () => {
     setRun((current) => pushLuck(current));
+    setPeeking(false);
     play("flip");
   };
 
@@ -233,7 +252,11 @@ const ExpeditionRun = ({
     play("chime");
   };
 
-  const advance = () => setRun((current) => nextRound(current));
+  const advance = () => {
+    setRun((current) => nextRound(current));
+    setGain(null);
+    setPeeking(false);
+  };
 
   const share = async () => {
     const origin =
@@ -298,10 +321,37 @@ const ExpeditionRun = ({
       : null;
 
   const toSummit = Math.max(0, run.summitAt - run.round);
+  /** The score in the top bar, counted up rather than swapped out. */
+  const shownScore = useCountUp(run.score);
+  /** One life left is a state the whole screen should be in, not a grey dot. */
+  const lastLife = run.lives === 1 && !run.over;
+  /** What the crossroads is worth pushing for, if there is a card left. */
+  const nextCard = pushable ? stake : null;
+  /** What the card in play is worth to the stack — the same ramp, one step
+   *  earlier, so the stake is visible while the card is still being placed. */
+  const atStake = ended || run.over ? null : pushValue(streak);
+  const dialLabel = run.summited
+    ? t("expedition.dial.summited", { round: run.round })
+    : t("expedition.dial.climb", {
+        round: run.round,
+        summit: run.summitAt,
+        radius: round.radiusKm.toLocaleString("en-US"),
+      });
 
   return (
     <>
       {celebrate > 0 && <Confetti trigger={celebrate} />}
+
+      {/* On the last life the whole frame runs hot. A run about to end should
+          not look like a run that just started. */}
+      {lastLife && (
+        <div
+          aria-hidden
+          title={t("expedition.lastLife")}
+          className="pointer-events-none fixed inset-0 z-30 animate-pulse"
+          style={{ boxShadow: "inset 0 0 110px -28px var(--color-alert-500)" }}
+        />
+      )}
 
       {/* Status banner — fixed at the top, mirroring the board and the daily. */}
       <div
@@ -317,6 +367,14 @@ const ExpeditionRun = ({
             >
               <Glyph name="arrow-left" />
             </Link>
+            <ClimbDial
+              round={run.round}
+              summitAt={run.summitAt}
+              radius={round.radiusKm}
+              startRadius={startRadius}
+              summited={run.summited}
+              label={dialLabel}
+            />
             <div className="min-w-0">
               <div className="truncate font-display text-sm font-bold text-chart-100">
                 {t("expedition.round", { number: run.round })}
@@ -327,35 +385,57 @@ const ExpeditionRun = ({
                   </span>
                 )}
               </div>
-              <div className="truncate text-xs text-chart-400">
-                {beyond ??
-                  t("expedition.roundMeta", {
-                    count: round.cities.length,
-                    radius: round.radiusKm.toLocaleString("en-US"),
-                  })}
+              {/* The long form does not survive a portrait phone next to the
+                  lives and the score, and the dial already draws the circle —
+                  so the narrow screen gets the half that carries the news. */}
+              <div className="truncate text-[11px] text-chart-400 sm:text-xs">
+                {beyond ?? (
+                  <>
+                    <span className="sm:hidden">
+                      {t("expedition.roundMetaShort", {
+                        radius: round.radiusKm.toLocaleString("en-US"),
+                      })}
+                    </span>
+                    <span className="hidden sm:inline">
+                      {t("expedition.roundMeta", {
+                        count: round.cities.length,
+                        radius: round.radiusKm.toLocaleString("en-US"),
+                      })}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
-            <span
-              className="flex items-center gap-1"
-              role="img"
-              aria-label={t("expedition.livesLeft", { count: run.lives })}
-            >
-              {Array.from({ length: EXPEDITION_LIVES }, (_, index) => (
-                <Life key={index} spent={index >= run.lives} />
-              ))}
-            </span>
+          <div className="flex shrink-0 items-center gap-2.5 sm:gap-3">
+            <LifeRow
+              lives={run.lives}
+              total={EXPEDITION_LIVES}
+              label={t("expedition.livesLeft", { count: run.lives })}
+            />
             <span className="font-display text-sm font-bold text-chart-100 tabular-nums">
-              {run.score}
+              {shownScore}
               <span className="ml-1 text-[10px] font-normal text-chart-500">
                 {t("expedition.pts")}
               </span>
             </span>
+            <MuteToggle />
           </div>
         </div>
       </div>
+
+      {crossroads && !beat && !peeking && !run.over && (
+        <Crossroads
+          pot={banked}
+          next={nextCard}
+          streak={streak}
+          onBank={bank}
+          onPush={push}
+          onDismiss={() => setPeeking(true)}
+          t={t}
+        />
+      )}
 
       <div className="grid gap-4 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:grid-cols-[1fr_320px] lg:pb-[calc(7rem+env(safe-area-inset-bottom))]">
         <div className="space-y-4">
@@ -396,6 +476,18 @@ const ExpeditionRun = ({
             </Panel>
           )}
 
+          {!run.over && (
+            <PotStage
+              streak={onTable}
+              pot={potShown}
+              next={atStake}
+              phase={run.phase}
+              ending={ended ? run.ending : null}
+              gain={gain}
+              t={t}
+            />
+          )}
+
           <Panel title={t("daily.hand.title")} subtitle={placing ? banner : legend}>
             <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
               {config.categories.map((category) => {
@@ -426,10 +518,10 @@ const ExpeditionRun = ({
             </div>
           </Panel>
 
-          <Panel
-            title={t("expedition.board")}
-            subtitle={t("expedition.streak", { count: onTable, score: worth })}
-          >
+          {/* Keyed on the shake count so the wobble replays on each bust
+              rather than firing once and never again. */}
+          <div key={shake} className={cx(shake > 0 && "animate-verdict-shake")}>
+          <Panel title={t("expedition.board")}>
             {ended && round.cities.length > 0 && (
               <div className="mb-3">
                 <MiniMap cities={round.cities} highlights={highlights} height={260} />
@@ -502,6 +594,7 @@ const ExpeditionRun = ({
               })}
             </div>
           </Panel>
+          </div>
 
           {settledCards.length > 0 && (
             <Panel title={t("daily.answers")}>
@@ -576,33 +669,15 @@ const ExpeditionRun = ({
 
         <div className="space-y-4">
           <Panel title={t("expedition.progress")}>
-            <div className="flex gap-2">
-              <Stat label={t("expedition.stat.round")} value={run.round} />
-              <Stat label={t("expedition.stat.lives")} value={run.lives} />
-              <Stat label={t("expedition.stat.score")} value={run.score} />
-            </div>
-
-            {/* The summit: the point the circle stops closing, and the thing a
-                run can be said to have won rather than merely survived. */}
-            <div className="mt-4 border-t border-chart-800 pt-3">
-              {run.summited ? (
-                <p className="text-xs text-beacon-400">{t("expedition.summit.past")}</p>
-              ) : (
-                <>
-                  <p className="text-xs text-chart-400">
-                    {t("expedition.summit.toGo", { count: toSummit })}
-                  </p>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-chart-800">
-                    <div
-                      className="h-full rounded-full bg-beacon-500 transition-all"
-                      style={{
-                        width: `${Math.min(100, ((run.round - 1) / Math.max(1, run.summitAt - 1)) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
+            {/* The summit in words. The dial in the top bar draws it; this
+                says how far there is left to go. */}
+            {run.summited ? (
+              <p className="text-xs text-beacon-400">{t("expedition.summit.past")}</p>
+            ) : (
+              <p className="text-xs text-chart-400">
+                {t("expedition.summit.toGo", { count: toSummit })}
+              </p>
+            )}
 
             <div className="mt-3 flex items-center gap-3 border-t border-chart-800 pt-3 text-xs">
               <span
@@ -631,6 +706,18 @@ const ExpeditionRun = ({
                   <RoundPip key={record.number} ending={record.ending} />
                 ))}
               </div>
+            )}
+
+            {!run.over && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-3"
+                onClick={onReconfigure}
+              >
+                {t("expedition.abandon")}
+              </Button>
             )}
           </Panel>
 
@@ -688,39 +775,32 @@ const ExpeditionRun = ({
             </Panel>
           )}
 
-          <Panel title={t("expedition.settings.title")}>
-            <p className="text-xs text-chart-400">
-              {t("expedition.settings.body", { region: label, count: total })}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {config.categories.map((category) => (
-                <Badge key={category} tone="muted">
-                  <CategoryIcon category={category} />
-                  {t(`card.${category}.short`)}
-                </Badge>
-              ))}
-            </div>
-            {!run.over && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="mt-3"
-                onClick={onReconfigure}
-              >
-                {t("expedition.abandon")}
-              </Button>
-            )}
-          </Panel>
+          {run.over && (
+            <>
+              <Panel title={t("expedition.settings.title")}>
+                <p className="text-xs text-chart-400">
+                  {t("expedition.settings.body", { region: label, count: total })}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {config.categories.map((category) => (
+                    <Badge key={category} tone="muted">
+                      <CategoryIcon category={category} />
+                      {t(`card.${category}.short`)}
+                    </Badge>
+                  ))}
+                </div>
+              </Panel>
 
-          <Panel title={t("expedition.daily.title")}>
-            <p className="text-xs text-chart-400">{t("expedition.daily.body")}</p>
-            <Link href="/daily" className="mt-3 inline-block">
-              <Button variant="secondary" size="sm">
-                {t("expedition.daily.cta")}
-              </Button>
-            </Link>
-          </Panel>
+              <Panel title={t("expedition.daily.title")}>
+                <p className="text-xs text-chart-400">{t("expedition.daily.body")}</p>
+                <Link href="/daily" className="mt-3 inline-block">
+                  <Button variant="secondary" size="sm">
+                    {t("expedition.daily.cta")}
+                  </Button>
+                </Link>
+              </Panel>
+            </>
+          )}
         </div>
       </div>
 

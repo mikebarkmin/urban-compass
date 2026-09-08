@@ -26,22 +26,37 @@ interface LayoutProps {
   header?: ReactNode;
 }
 
+/** How much of the layout a screen with its own fixed bar wants left over. */
+type TopBar = "none" | "present" | "chromeless";
+
 /**
  * Screens that pin a bar to the top of the viewport — the board and the daily
  * puzzle — register it here so the layout can push its own header clear of it.
  * Without that the header slides underneath the bar and the mute and language
  * controls become unreachable for as long as the bar is up.
+ *
+ * A screen that carries those controls in its own bar can register as
+ * "chromeless" instead, and the layout stands down entirely: inside a run the
+ * wordmark and the language switch are two rows of a phone screen spent on
+ * things nobody is going to use mid-game.
  */
-const TopBarContext = createContext<(present: boolean) => void>(() => {});
+const TopBarContext = createContext<(bar: TopBar) => void>(() => {});
 
-/** Declare that this screen renders a fixed top bar. */
-export const useFixedTopBar = () => {
+/**
+ * Declare that this screen renders a fixed top bar. Pass `chromeless` when it
+ * also carries the controls the layout header would have offered, and the
+ * header is dropped rather than pushed clear.
+ */
+export const useFixedTopBar = (chromeless = false) => {
   const declare = useContext(TopBarContext);
   useEffect(() => {
-    declare(true);
-    return () => declare(false);
-  }, [declare]);
+    declare(chromeless ? "chromeless" : "present");
+    return () => declare("none");
+  }, [declare, chromeless]);
 };
+
+/** The mute control, so a screen that hides the header can carry it itself. */
+export { MuteToggle };
 
 /** Two buttons rather than a select: there are only ever two languages. */
 const LanguageSwitch = () => {
@@ -96,8 +111,10 @@ const MuteToggle = () => {
 
 const Layout = ({ children, header }: LayoutProps) => {
   const { t } = useLocale();
-  const [hasTopBar, setHasTopBar] = useState(false);
-  const declareTopBar = useCallback((present: boolean) => setHasTopBar(present), []);
+  const [topBar, setTopBar] = useState<TopBar>("none");
+  const declareTopBar = useCallback((bar: TopBar) => setTopBar(bar), []);
+  const hasTopBar = topBar !== "none";
+  const chromeless = topBar === "chromeless";
 
   return (
   <TopBarContext.Provider value={declareTopBar}>
@@ -118,11 +135,15 @@ const Layout = ({ children, header }: LayoutProps) => {
         // The bar is 65px tall, 69px from `sm` up. The header needs more air
         // above it than the 16px it keeps below, or it reads as a second bar
         // stuck to the first rather than as the top of the content.
-        hasTopBar
-          ? "pt-[calc(5.5rem+env(safe-area-inset-top))] sm:pt-[calc(6rem+env(safe-area-inset-top))]"
-          : "pt-4 sm:pt-6",
+        !hasTopBar
+          ? "pt-4 sm:pt-6"
+          : chromeless
+            ? // Nothing below the bar but the game, so clear the bar and stop.
+              "pt-[calc(4.75rem+env(safe-area-inset-top))] sm:pt-[calc(5.25rem+env(safe-area-inset-top))]"
+            : "pt-[calc(5.5rem+env(safe-area-inset-top))] sm:pt-[calc(6rem+env(safe-area-inset-top))]",
       )}
     >
+      {!chromeless && (
       <header className="mb-4 flex items-center justify-between gap-2 sm:mb-6 sm:gap-3">
         <Link
           href="/"
@@ -150,10 +171,13 @@ const Layout = ({ children, header }: LayoutProps) => {
           <LanguageSwitch />
         </div>
       </header>
+      )}
 
       <main className="flex-1">{children}</main>
 
-      <footer className="mt-8 text-center text-[11px] text-chart-600">{t("app.footer")}</footer>
+      {!chromeless && (
+        <footer className="mt-8 text-center text-[11px] text-chart-600">{t("app.footer")}</footer>
+      )}
     </div>
   </div>
   </TopBarContext.Provider>
