@@ -467,9 +467,6 @@ const ExpeditionRun = ({
                       >
                         {cityName(city, locale)}
                       </span>
-                      {city.country && (
-                        <span className="font-mono text-[10px] text-chart-500">{city.country}</span>
-                      )}
                     </div>
 
                     <div className="mt-2 flex min-h-5 flex-wrap items-center gap-1">
