@@ -33,8 +33,9 @@ import { shareOrCopy } from "@/utils";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useLocale } from "@/i18n";
 import { Badge, Button, Panel, cx } from "./ui";
-import { useFixedTopBar } from "./Layout";
+import { MuteToggle, useFixedTopBar } from "./Layout";
 import { MARK_STYLE, MarkSquare } from "./MarkSquare";
+import StageResult, { StageAction, StageActionQuiet } from "./StageResult";
 import MiniMap from "./MiniMap";
 import { EmojiText } from "./Emoji";
 import { CategoryIcon, Glyph } from "./Glyph";
@@ -64,7 +65,8 @@ const formatDuration = (ms: number): string => {
 const Daily = () => {
   const { locale, t } = useLocale();
   const router = useRouter();
-  useFixedTopBar();
+  // The board carries its own bar, and mute with it, so the site header goes.
+  useFixedTopBar(true);
 
   // Everything below depends on the date and on localStorage, so the first
   // render is deliberately empty — it keeps the server and client markup in step.
@@ -75,6 +77,13 @@ const Daily = () => {
   const [picks, setPicks] = useState<Picks>({});
   const [selected, setSelected] = useState<Category | null>(null);
   const [revealed, setRevealed] = useState(false);
+  /**
+   * The reveal overlay, raised by the act of revealing rather than by the
+   * `revealed` flag. Opening a day already finished — or reloading one — is
+   * not a reveal, and announcing one would be telling the player something
+   * happened when nothing did.
+   */
+  const [showResult, setShowResult] = useState(false);
   // Only while the puzzle is still in play; once it is revealed there is
   // nothing left to lose to a screen timeout.
   useWakeLock(!revealed);
@@ -100,6 +109,7 @@ const Daily = () => {
     setStats(saved);
     setSelected(null);
     setCopied(false);
+    setShowResult(false);
 
     // A finished day is one-shot, today's included: show the banked result
     // rather than a replayable board. A day carried over from before the picks
@@ -156,6 +166,7 @@ const Daily = () => {
     setStats(next);
     saveStats(next);
     setRevealed(true);
+    setShowResult(true);
   };
 
   const share = async () => {
@@ -196,8 +207,46 @@ const Daily = () => {
       }, {})
     : {};
 
+  const total = DAILY_CATEGORIES.length;
+
   return (
     <>
+      {/* The reveal, given the screen the way an expedition round is. The board
+          keeps every answer underneath; this is the moment, and the tally. */}
+      {showResult && (
+        <StageResult
+          tone={score === total ? "signal" : score === 0 ? "alert" : "beacon"}
+          title={t("daily.result.title", { count: score, total })}
+          subtitle={
+            score === total
+              ? t("daily.result.perfect")
+              : score === 0
+                ? t("daily.result.blank")
+                : t("daily.result.some")
+          }
+          figure={DAILY_CATEGORIES.map((category) => (
+            <MarkSquare key={category} mark={markFor(puzzle, category, picks[category])} />
+          ))}
+          actions={
+            <>
+              <StageActionQuiet onClick={() => setShowResult(false)}>
+                {t("daily.result.see")}
+              </StageActionQuiet>
+              <StageAction
+                onClick={() => {
+                  setShowResult(false);
+                  void share();
+                }}
+              >
+                <EmojiText text={t("daily.share")} />
+              </StageAction>
+            </>
+          }
+          peek={t("daily.result.peek")}
+          onDismiss={() => setShowResult(false)}
+        />
+      )}
+
       {/* Status banner — fixed at the top, mirroring the multiplayer board. */}
       <div
         className={cx(
@@ -259,8 +308,11 @@ const Daily = () => {
 
           <div className="flex shrink-0 items-center gap-2">
             {revealed ? (
+              // The score sits beside the title already, and the marks are on
+              // the cards and in the result. On a phone they only cost the
+              // meta line the characters it needs.
               <span
-                className="flex items-center gap-1"
+                className="hidden items-center gap-1 sm:flex"
                 role="img"
                 aria-label={t("daily.resultLabel", {
                   score,
@@ -281,6 +333,7 @@ const Daily = () => {
                 {placedCount}/{DAILY_CATEGORIES.length}
               </span>
             )}
+            <MuteToggle onAccent={!!selected && !revealed} />
           </div>
         </div>
       </div>

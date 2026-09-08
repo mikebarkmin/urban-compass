@@ -4,8 +4,8 @@ import { ALL_CATEGORIES, Category } from "../../game/cities";
 import { useLocale } from "@/i18n";
 import { useSound } from "@/hooks/useSound";
 import { EmojiText } from "@/components/Emoji";
-import { cx } from "./ui";
 import { CategoryIcon } from "./Glyph";
+import StageCall, { STAGE_FADE_MS } from "./StageCall";
 
 /**
  * The four log keys worth interrupting for, and whether each one landed. A
@@ -39,7 +39,6 @@ interface Flash {
 }
 
 const HOLD_MS = 2600;
-const FADE_MS = 400;
 
 /**
  * A verdict card that pops over the board when a call or a doubt resolves.
@@ -50,7 +49,19 @@ const FADE_MS = 400;
  * care. Before this the outcome was one line in the activity log, which on a
  * phone sits below the board entirely.
  */
-const ActionFlash = ({ log }: { log: LogEntry[] }) => {
+const ActionFlash = ({
+  log,
+  onActive,
+}: {
+  log: LogEntry[];
+  /**
+   * Whether a verdict is on screen, fade included. The board holds its turn
+   * call back while one is: both are `StageCall` flashes in the same place, so
+   * without this they land on top of each other — and a doubt resolving is
+   * exactly the moment a turn is most likely to pass.
+   */
+  onActive?: (active: boolean) => void;
+}) => {
   const { t } = useLocale();
   const { play } = useSound();
   const [flash, setFlash] = useState<Flash | null>(null);
@@ -102,7 +113,7 @@ const ActionFlash = ({ log }: { log: LogEntry[] }) => {
     );
     const drop = window.setTimeout(
       () => setFlash((current) => (current && current.id === flashId ? null : current)),
-      HOLD_MS + FADE_MS,
+      HOLD_MS + STAGE_FADE_MS,
     );
     return () => {
       window.clearTimeout(fade);
@@ -110,48 +121,37 @@ const ActionFlash = ({ log }: { log: LogEntry[] }) => {
     };
   }, [flashId]);
 
+  useEffect(() => {
+    onActive?.(!!flash);
+  }, [flash, onActive]);
+
   if (!flash) return null;
 
   const { hit, headline } = VERDICTS[flash.key];
 
+  // Keyed on the verdict so a second one restarts the entrance rather than
+  // sliding new words into the card already on screen.
   return (
-    // A quarter down the viewport: clear of the app header above and the
-    // action bar below, over the board itself where the eye already is.
-    // Click-through, because a verdict must never eat the tap that follows it.
-    <div
-      className="pointer-events-none fixed inset-x-0 top-1/4 z-[60] flex justify-center px-4"
-      role="status"
-      aria-live="polite"
-    >
-      {/* The shake lives on the wrapper so it composes with the card's `pop`
-          instead of fighting it for the transform. */}
-      <div key={flash.id} className={cx(!hit && "animate-verdict-shake")}>
-        <div
-          className={cx(
-            "animate-pop rounded-2xl border-2 px-6 py-4 text-center shadow-2xl shadow-black/60 transition-opacity",
-            hit
-              ? "border-signal-500 bg-signal-500/25 text-signal-400"
-              : "border-alert-500 bg-alert-500/25 text-alert-500",
-            flash.leaving && "opacity-0",
-          )}
-          style={{ transitionDuration: `${FADE_MS}ms` }}
-        >
-          <div className="flex items-center justify-center gap-2 font-display text-xl font-bold">
-            {flash.category && (
-              <CategoryIcon category={flash.category} className="text-2xl" />
-            )}
-            {t(headline)}
-          </div>
-          <div className="mt-1.5 text-sm font-medium text-chart-100">
-            <EmojiText text={t("flash.body", {
+    <StageCall
+      key={flash.id}
+      mode="flash"
+      tone={hit ? "signal" : "alert"}
+      shake={!hit}
+      leaving={flash.leaving}
+      icon={flash.category ? <CategoryIcon category={flash.category} className="text-2xl" /> : null}
+      title={t(headline)}
+      prompt={
+        <span className="text-sm font-medium text-chart-100">
+          <EmojiText
+            text={t("flash.body", {
               player: flash.player,
               target: flash.target,
               city: flash.city,
-            })} />
-          </div>
-        </div>
-      </div>
-    </div>
+            })}
+          />
+        </span>
+      }
+    />
   );
 };
 

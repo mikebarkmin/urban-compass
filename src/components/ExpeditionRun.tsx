@@ -50,26 +50,16 @@ import CategoryCard from "./CategoryCard";
 import MiniMap from "./MiniMap";
 import Confetti from "./Confetti";
 import { regionLabel } from "./ExpeditionSetup";
-import { ClimbDial, Crossroads, LifeRow, PotStage } from "./ExpeditionStage";
-
-/** The colour a finished round leaves on the strip, matching the share squares. */
-const ENDING_FILL: Record<RoundEnding, string> = {
-  banked: "bg-signal-500",
-  close: "bg-beacon-500",
-  bust: "bg-alert-500",
-};
-
-/**
- * One finished round in the run strip. A near miss gets its own colour rather
- * than being lumped in with a bust — the row is meant to read as a story, and
- * "three yellows" is a different story from "three reds".
- */
-const RoundPip = ({ ending }: { ending: RoundEnding }) => (
-  <span
-    className={cx("inline-block h-3.5 w-3.5 shrink-0 rounded-[3px]", ENDING_FILL[ending])}
-    aria-hidden
-  />
-);
+import {
+  CardDraw,
+  ClimbDial,
+  Crossroads,
+  LifeRow,
+  PotStage,
+  RoundPip,
+  RoundResult,
+  RunOver,
+} from "./ExpeditionStage";
 
 interface ExpeditionRunProps {
   pool: City[];
@@ -117,16 +107,22 @@ const ExpeditionRun = ({
   const [run, setRun] = useState<Run>(() => restored ?? startRun(seed, config, startRadius));
   const [copied, setCopied] = useState(false);
   const [celebrate, setCelebrate] = useState(0);
-  /** The beat between a card landing and the game asking for the next bet. */
-  const [beat, setBeat] = useState(false);
+  /** The beat between a card landing and the game asking for the next bet.
+   *  A counter rather than a flag, so the hold restarts on each new verdict. */
+  const [beat, setBeat] = useState(0);
   /** The crossroads, stepped aside so the board underneath can be studied. */
   const [peeking, setPeeking] = useState(false);
   /** What the card just banked, floated off the stack. Keyed so it replays. */
   const [gain, setGain] = useState<{ value: number; key: number } | null>(null);
   /** Bumped on a bust, to shake the board that took the stack. */
   const [shake, setShake] = useState(0);
+  /**
+   * The card just dealt, held on screen for a beat before the board. Keyed so
+   * that dealing the same category twice running still restarts the hold, and
+   * so the timer below can own its own lifetime.
+   */
+  const [dealt, setDealt] = useState<{ card: Category; key: number } | null>(null);
   const reduced = useReducedMotion();
-  const beatTimer = useRef<number | null>(null);
 
   // A round in play is worth keeping the screen awake for; a finished run is not.
   useWakeLock(!run.over);
@@ -184,21 +180,62 @@ const ExpeditionRun = ({
     }
   }, [run.summited, play]);
 
+  // A card arriving is the round's question being asked, and it lands face-up
+  // on the screen for a moment.
+  //
+  // Deliberately not seeded from the run's opening state: seeding would make
+  // the very first card of every run the one card never dealt on screen. The
+  // phase check below is what keeps a restored run quiet, and it is the right
+  // test — a run picked up mid-placing *is* being asked that card right now,
+  // so showing it is telling the truth about the present.
+  const drawn = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${run.round}:${run.draws.length}`;
+    if (key === drawn.current) return;
+    const previous = drawn.current;
+    drawn.current = key;
+
+    if (previous !== null) {
+      const [wasRound, wasCount] = previous.split(":").map(Number);
+      // A new round deals card one, so the count going *down* is not proof
+      // that nothing was dealt — only a rewind inside the same round is, and
+      // a second wind hands back a card that was already seen.
+      if (run.round === wasRound && run.draws.length < wasCount) return;
+    }
+
+    // Not gated on reduced motion: which card is being asked for is
+    // information, and the CSS already collapses the entrance animation under
+    // that query. Only the beat below is motion, and only that is skipped.
+    if (run.phase !== "placing") return;
+
+    setDealt({ card: run.draws[run.draws.length - 1], key: Date.now() });
+  }, [run.round, run.draws, run.phase]);
+
+  // Both holds below own their timer inside the effect that watches the state
+  // it clears, rather than arming it in one effect and clearing it in an
+  // unmount-only other. Strict mode remounts an effect, and the split version
+  // let the remount kill a live timer while the guard above declined to arm a
+  // new one — which left the card on screen for good.
+  useEffect(() => {
+    if (!dealt) return;
+    const id = window.setTimeout(() => setDealt(null), 1400);
+    return () => window.clearTimeout(id);
+  }, [dealt]);
+
+  const skipDeal = () => setDealt(null);
+
   // A reveal that resolves into the next question in the same frame is not a
   // reveal. Hold the verdict on screen before the crossroads takes the screen.
   const holdBeat = () => {
     if (reduced) return;
-    setBeat(true);
-    if (beatTimer.current !== null) window.clearTimeout(beatTimer.current);
-    beatTimer.current = window.setTimeout(() => setBeat(false), 750);
+    setBeat((count) => count + 1);
   };
 
-  useEffect(
-    () => () => {
-      if (beatTimer.current !== null) window.clearTimeout(beatTimer.current);
-    },
-    [],
-  );
+  useEffect(() => {
+    if (!beat) return;
+    const id = window.setTimeout(() => setBeat(0), 750);
+    return () => window.clearTimeout(id);
+  }, [beat]);
 
   const assign = (cityId: string) => {
     if (!inPlay) return;
@@ -216,10 +253,12 @@ const ExpeditionRun = ({
     if (next.phase === "crossroads") {
       // The card landed: the stack just grew by what this card was worth.
       setGain({ value: pushValue(streak), key: Date.now() });
-      holdBeat();
     } else if (next.ending === "bust") {
       setShake((count) => count + 1);
     }
+    // Let the verdict land on the card and the board before the screen is
+    // taken over by what comes next.
+    holdBeat();
 
     if (next.over) play("fanfare");
     else if (next.phase === "crossroads") play("chime");
@@ -230,6 +269,7 @@ const ExpeditionRun = ({
     const next = bankRound(run);
     setRun(next);
     setPeeking(false);
+    holdBeat();
     play("chime");
     // A round worth walking away from is worth a bit of noise. Confetti skips
     // itself under reduced motion, so no guard is needed here.
@@ -249,6 +289,7 @@ const ExpeditionRun = ({
 
   const secondWind = () => {
     setRun((current) => spendSecondWind(current));
+    setPeeking(false);
     play("chime");
   };
 
@@ -256,6 +297,7 @@ const ExpeditionRun = ({
     setRun((current) => nextRound(current));
     setGain(null);
     setPeeking(false);
+    play("flip");
   };
 
   const share = async () => {
@@ -325,6 +367,13 @@ const ExpeditionRun = ({
   const shownScore = useCountUp(run.score);
   /** One life left is a state the whole screen should be in, not a grey dot. */
   const lastLife = run.lives === 1 && !run.over;
+  /** The last card's answer and what was played on it, for the result screen. */
+  const lastAnswer = shown ? (round.answers[shown] ?? null) : null;
+  const lastPick = shown
+    ? (round.cities.find((city) => city.id === run.picks[shown]) ?? null)
+    : null;
+  const lastVerdict = shown ? cardVerdict(round, shown, run.picks[shown]) : null;
+
   /** What the crossroads is worth pushing for, if there is a card left. */
   const nextCard = pushable ? stake : null;
   /** What the card in play is worth to the stack — the same ramp, one step
@@ -341,6 +390,16 @@ const ExpeditionRun = ({
   return (
     <>
       {celebrate > 0 && <Confetti trigger={celebrate} />}
+
+      {dealt && (
+        <CardDraw
+          category={dealt.card}
+          label={t(`card.${dealt.card}.short`)}
+          round={run.round}
+          onDismiss={skipDeal}
+          t={t}
+        />
+      )}
 
       {/* On the last life the whole frame runs hot. A run about to end should
           not look like a run that just started. */}
@@ -424,6 +483,48 @@ const ExpeditionRun = ({
           </div>
         </div>
       </div>
+
+      {/* The end of the run. Over the game-over panel rather than instead of
+          it, so the tally and the way back stay one tap away. */}
+      {run.over && !beat && !peeking && (
+        <RunOver
+          summited={run.summited}
+          round={roundsReached(run)}
+          score={run.score}
+          hits={run.hits}
+          cards={run.cards}
+          history={run.history}
+          challenge={challenge ?? null}
+          onShare={share}
+          shareLabel={copied ? t("daily.copied") : t("expedition.share")}
+          onAgain={onRestart}
+          onDismiss={() => setPeeking(true)}
+          t={t}
+        />
+      )}
+
+      {/* The round's verdict, and the only decision left in it. Not shown once
+          the run is over: the game-over panel is that round's result, and it
+          carries the share link the run ends on. */}
+      {ended && !beat && !peeking && !run.over && run.ending && !dealt && (
+        <RoundResult
+          ending={run.ending}
+          score={worth}
+          standing={onTable}
+          lives={run.lives}
+          totalLives={EXPEDITION_LIVES}
+          category={shown ?? config.categories[0]}
+          label={t(`card.${shown ?? config.categories[0]}`)}
+          answer={lastAnswer ? cityName(lastAnswer, locale) : null}
+          pick={lastVerdict?.mark === "hit" || !lastPick ? null : cityName(lastPick, locale)}
+          rank={lastVerdict?.rank ?? null}
+          of={lastVerdict?.of ?? null}
+          onSecondWind={secondWindReady ? secondWind : null}
+          onNext={advance}
+          onDismiss={() => setPeeking(true)}
+          t={t}
+        />
+      )}
 
       {crossroads && !beat && !peeking && !run.over && (
         <Crossroads

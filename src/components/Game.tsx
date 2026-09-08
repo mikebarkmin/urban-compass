@@ -34,6 +34,12 @@ const Game = ({ username, roomId, onLeave }: GameProps) => {
     );
   }
 
+  // While the board is up it carries its own fixed bar, and that bar already
+  // names the round, the set and whose turn it is. Repeating them here costs a
+  // phone two rows directly under it — so in play this shrinks to the things
+  // the bar has no room for: which room you are in, and the way out of it.
+  const playing = gameState.phase === "playing";
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -45,8 +51,8 @@ const Game = ({ username, roomId, onLeave }: GameProps) => {
             />
             {roomId}
           </Badge>
-          <Badge tone="muted">{username}</Badge>
-          {gameState.roundNumber > 0 && gameState.phase !== "lobby" && (
+          {!playing && <Badge tone="muted">{username}</Badge>}
+          {!playing && gameState.roundNumber > 0 && gameState.phase !== "lobby" && (
             <Badge tone="muted">
               {gameState.phase === "game_over"
                 ? t("game.final")
@@ -62,11 +68,13 @@ const Game = ({ username, roomId, onLeave }: GameProps) => {
                   })}
             </Badge>
           )}
-          <Badge tone="muted">
-            {gameState.citySetId === "custom"
-              ? gameState.citySetName
-              : t(`set.${gameState.citySetId}.name`)}
-          </Badge>
+          {!playing && (
+            <Badge tone="muted">
+              {gameState.citySetId === "custom"
+                ? gameState.citySetName
+                : t(`set.${gameState.citySetId}.name`)}
+            </Badge>
+          )}
         </div>
 
         <button

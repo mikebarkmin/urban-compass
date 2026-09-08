@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   Action,
   ClientGameState,
@@ -12,8 +12,9 @@ import { useLocale } from "@/i18n";
 import { useSound } from "@/hooks/useSound";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { Avatar, Panel, cx } from "./ui";
-import { useFixedTopBar } from "./Layout";
+import { MuteToggle, useFixedTopBar } from "./Layout";
 import ActionFlash from "./ActionFlash";
+import StageCall from "./StageCall";
 import PlayerList from "./PlayerList";
 import ActivityLog from "./ActivityLog";
 import TurnClock from "./TurnClock";
@@ -72,7 +73,8 @@ const ACCENT_PILL_OUTLINE = "border border-chart-950/30 text-chart-900 hover:bg-
 
 const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProps) => {
   const { locale, t } = useLocale();
-  useFixedTopBar();
+  // The board carries its own bar, and mute with it, so the site header goes.
+  useFixedTopBar(true);
   // The board is only mounted while a game is in progress.
   useWakeLock(true);
   const { play } = useSound();
@@ -98,6 +100,55 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
   const burned = me?.burned ?? 0;
 
   const canAct = isMyTurn && !iAmDone && cardsLeft > 0;
+  // The turn passing to you is the moment the whole board waits on, and until
+  // now it was a bar quietly turning amber above a screen you may be scrolled
+  // away from. It flashes rather than holds: a turn is timed and shared, so
+  // the card must never cover the board or eat the tap that follows it.
+  const [turnCall, setTurnCall] = useState(0);
+  /** A call/doubt verdict holding the flash slot. */
+  const [verdictUp, setVerdictUp] = useState(false);
+  const seenTurn = useRef<string | null>(null);
+
+  useEffect(() => {
+    const key = `${gameState.roundNumber}:${gameState.currentTurnUserId ?? ""}`;
+    if (key === seenTurn.current) return;
+    seenTurn.current = key;
+
+    // Unlike `ActionFlash`, this does not seed itself on the first render.
+    // A replayed verdict would be a lie about the past, but "your turn" is a
+    // statement about the present: it is worth making when the board first
+    // opens on your turn, and worth making again after a reconnect.
+    // Not gated on reduced motion: "it is your turn" is information, and in a
+    // timed game it is the information that matters most. `globals.css`
+    // already collapses the entrance animation to nothing under that query, so
+    // these players get the same card — it simply appears instead of popping.
+    if (!canAct) return;
+    setTurnCall((count) => count + 1);
+    play("chime");
+  }, [gameState.roundNumber, gameState.currentTurnUserId, canAct, play]);
+
+  // A verdict owns the flash slot until it has faded, so a turn call raised
+  // underneath one waits rather than stacking on it. The hold only starts
+  // ticking once the card is actually visible — otherwise a turn call raised
+  // behind a three-second verdict would expire before anybody saw it.
+  const showTurnCall = turnCall > 0 && !verdictUp;
+
+  // The hold owns its timer inside the effect that watches what it clears.
+  // Arming it in one effect and clearing it in an unmount-only other lets a
+  // strict-mode remount kill a live timer with nothing left to re-arm it, and
+  // the card then sits over the board for the rest of the game.
+  useEffect(() => {
+    if (!showTurnCall) return;
+    const id = window.setTimeout(() => setTurnCall(0), 1800);
+    return () => window.clearTimeout(id);
+  }, [showTurnCall, turnCall]);
+
+  // A turn that ends early — a card placed, the clock run out — takes its
+  // announcement with it rather than leaving it over the next player's board.
+  useEffect(() => {
+    if (!canAct) setTurnCall(0);
+  }, [canAct]);
+
   const stealsOn = gameState.settings.steals;
   const doubtsOn = gameState.settings.doubts;
   const powerUpsOn = gameState.settings.powerUps;
@@ -362,7 +413,20 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
   return (
     <>
       {/* Verdict flash for calls and doubts, shown to the whole table. */}
-      <ActionFlash log={gameState.log} />
+      <ActionFlash log={gameState.log} onActive={setVerdictUp} />
+
+      {/* A boolean, deliberately: a bare `&&` on the counter itself would put
+          a literal 0 on the board whenever there is nothing to show. */
+      showTurnCall && (
+        <StageCall
+          mode="flash"
+          label={t("board.turnCall.round", { round: gameState.roundNumber })}
+          title={t("board.turnCall")}
+          prompt={t(onlyPlace ? "board.turnCall.place" : "board.turnCall.act")}
+        >
+          <Avatar name={username} seed={username + roomId} avatar={me?.avatar} size={64} />
+        </StageCall>
+      )}
 
       {/* Turn banner — fixed at the top. Shows round state and whose turn it is.
           The action buttons live in the action box below, not here. */}
@@ -412,15 +476,18 @@ const Board = ({ gameState, username, roomId, clockOffset, dispatch }: BoardProp
             </div>
           </div>
 
-          {gameState.turnEndsAt !== null && gameState.settings.turnSeconds > 0 && (
-            <TurnClock
-              endsAt={gameState.turnEndsAt}
-              totalSeconds={effectiveTurnSeconds(gameState.settings)}
-              clockOffset={clockOffset}
-              mine={isMyTurn}
-              onAccent={canAct}
-            />
-          )}
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {gameState.turnEndsAt !== null && gameState.settings.turnSeconds > 0 && (
+              <TurnClock
+                endsAt={gameState.turnEndsAt}
+                totalSeconds={effectiveTurnSeconds(gameState.settings)}
+                clockOffset={clockOffset}
+                mine={isMyTurn}
+                onAccent={canAct}
+              />
+            )}
+            <MuteToggle onAccent={canAct} />
+          </div>
         </div>
       </div>
 

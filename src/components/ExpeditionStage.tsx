@@ -1,7 +1,10 @@
-import { RoundEnding, RoundPhase } from "@/utils/expedition";
+import { RoundEnding, RoundPhase, RoundRecord } from "@/utils/expedition";
 import type { TFunction } from "@/i18n";
+import type { Category } from "../../game/cities";
 import { cx, useCountUp } from "./ui";
-import { Glyph } from "./Glyph";
+import { CategoryIcon, Glyph } from "./Glyph";
+import { StageCall } from "./StageCall";
+import StageResult, { StageAction, StageActionQuiet } from "./StageResult";
 
 /**
  * The pieces that make a run feel like a run rather than a form: the pot you
@@ -12,6 +15,25 @@ import { Glyph } from "./Glyph";
  * the whole round loop; these are presentation, and they take their state as
  * numbers so they can be reasoned about — and restyled — on their own.
  */
+
+/** The colour a finished round leaves on the strip, matching the share squares. */
+const ENDING_FILL: Record<RoundEnding, string> = {
+  banked: "bg-signal-500",
+  close: "bg-beacon-500",
+  bust: "bg-alert-500",
+};
+
+/**
+ * One finished round in the run strip. A near miss gets its own colour rather
+ * than being lumped in with a bust — the row is meant to read as a story, and
+ * "three yellows" is a different story from "three reds".
+ */
+export const RoundPip = ({ ending }: { ending: RoundEnding }) => (
+  <span
+    className={cx("inline-block h-3.5 w-3.5 shrink-0 rounded-[3px]", ENDING_FILL[ending])}
+    aria-hidden
+  />
+);
 
 /**
  * One chip on the table. The stack heats as it grows — pale amber for the
@@ -347,4 +369,234 @@ export const Crossroads = ({
       </p>
     </div>
   </div>
+);
+
+/**
+ * The card being dealt.
+ *
+ * A round starts by asking a question, and the question used to arrive as a
+ * line of text in the action bar while a small card lit up in the hand. Here
+ * it lands face-up on the whole screen for a beat and then gets out of the
+ * way — enough to register what is being asked, not enough to become a tap.
+ *
+ * It holds the screen rather than flashing over it, which the multiplayer
+ * board cannot do: nothing here is on a clock but the player.
+ */
+export const CardDraw = ({
+  category,
+  label,
+  round,
+  onDismiss,
+  t,
+}: {
+  category: Category;
+  /** The card's name, in the reader's language. */
+  label: string;
+  round: number;
+  onDismiss: () => void;
+  t: TFunction;
+}) => (
+  <StageCall
+    mode="hold"
+    label={t("expedition.round", { number: round })}
+    title={label}
+    prompt={t("expedition.draw.prompt")}
+    onDismiss={onDismiss}
+  >
+    <CategoryIcon
+      category={category}
+      className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-beacon-300 opacity-60"
+    />
+    <CategoryIcon
+      category={category}
+      className="absolute right-2.5 bottom-2.5 h-3.5 w-3.5 rotate-180 text-beacon-300 opacity-60"
+    />
+    <span className="grid h-16 w-16 place-items-center rounded-full bg-chart-950/40 text-beacon-300 ring-1 ring-beacon-500/40 ring-inset">
+      <CategoryIcon category={category} className="h-8 w-8" />
+    </span>
+  </StageCall>
+);
+
+/** How a finished round is delivered. */
+const RESULT_TONE: Record<RoundEnding, "signal" | "beacon" | "alert"> = {
+  banked: "signal",
+  close: "beacon",
+  bust: "alert",
+};
+
+/**
+ * How the round went, given the screen the way the crossroads is.
+ *
+ * This one waits for a tap rather than timing out, because there is a real
+ * decision inside it on a bust: spend the second wind, or let the life go. It
+ * carries the answer as well as the verdict — being told the city you should
+ * have played, and where your pick actually came, is the part of a lost round
+ * worth having, and it should not be something you have to scroll for.
+ */
+export const RoundResult = ({
+  ending,
+  score,
+  standing,
+  lives,
+  totalLives,
+  category,
+  label,
+  answer,
+  pick,
+  rank,
+  of,
+  onSecondWind,
+  onNext,
+  onDismiss,
+  t,
+}: {
+  ending: RoundEnding;
+  /** What the round paid. */
+  score: number;
+  /** Cards that were standing on the table when it ended. */
+  standing: number;
+  lives: number;
+  totalLives: number;
+  category: Category;
+  label: string;
+  /** The city that was the answer, named for the reader. */
+  answer: string | null;
+  /** The city that was played, when it was not the answer. */
+  pick: string | null;
+  rank: number | null;
+  of: number | null;
+  /** Offered only when the bust can still be taken back. */
+  onSecondWind: (() => void) | null;
+  onNext: () => void;
+  onDismiss: () => void;
+  t: TFunction;
+}) => (
+  <StageResult
+    tone={RESULT_TONE[ending]}
+    shake={ending === "bust"}
+    title={t(`expedition.result.${ending}`)}
+    subtitle={
+      ending === "bust"
+        ? standing > 0
+          ? t("expedition.result.cost")
+          : // Busting on the round's first card loses a life and nothing else
+            // — there was no stack for it to take.
+            t("expedition.result.costLife")
+        : ending === "close"
+          ? // The runner-up's whole point is that it is a let-off, so the line
+            // leads with the life it did not cost. On a round's first card it
+            // pays nothing, and claiming otherwise would be a lie about zero.
+            standing > 0
+            ? t("expedition.result.kept", { count: score })
+            : t("expedition.result.keptNothing")
+          : t("expedition.result.paid", { count: score })
+    }
+    figure={Array.from({ length: totalLives }, (_, index) => (
+      <Life key={index} spent={index >= lives} />
+    ))}
+    detail={
+      <>
+        <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-chart-400 uppercase">
+          <CategoryIcon category={category} className="text-beacon-500" />
+          {label}
+        </div>
+        <div className="mt-1.5 font-display text-xl font-bold text-beacon-400">{answer ?? "—"}</div>
+        {pick && (
+          <p className="mt-1 text-xs text-chart-400">
+            {t("expedition.result.yours", { city: pick })}
+            {rank !== null && of !== null && (
+              <span className="ml-1 text-chart-500">{t("expedition.rank", { rank, of })}</span>
+            )}
+          </p>
+        )}
+      </>
+    }
+    actions={
+      <>
+        {onSecondWind && (
+          <StageActionQuiet onClick={onSecondWind}>
+            <Glyph name="swap" /> {t("expedition.secondWind.use")}
+          </StageActionQuiet>
+        )}
+        <StageAction onClick={onNext} wide={!onSecondWind}>
+          {t("expedition.next")} <Glyph name="arrow-right" />
+        </StageAction>
+      </>
+    }
+    peek={t("expedition.result.peek")}
+    onDismiss={onDismiss}
+  />
+);
+
+/**
+ * The end of the run, given the same screen its rounds got.
+ *
+ * It sits over the game-over panel rather than replacing it: the panel keeps
+ * the full tally and the way back to the setup screen, and a run worth sharing
+ * is worth reading twice. The pips are the figure because the row of them is
+ * the run — banked, banked, runner-up, bust is a story a number is not.
+ */
+export const RunOver = ({
+  summited,
+  round,
+  score,
+  hits,
+  cards,
+  history,
+  challenge,
+  onShare,
+  shareLabel,
+  onAgain,
+  onDismiss,
+  t,
+}: {
+  summited: boolean;
+  /** How deep the run got. */
+  round: number;
+  score: number;
+  hits: number;
+  cards: number;
+  history: RoundRecord[];
+  /** The mark a shared link set, when this run came from one. */
+  challenge: { score: number } | null;
+  onShare: () => void;
+  /** "Share the run", or the copied confirmation. */
+  shareLabel: string;
+  onAgain: () => void;
+  onDismiss: () => void;
+  t: TFunction;
+}) => (
+  <StageResult
+    tone={summited ? "signal" : "beacon"}
+    title={t("expedition.over.title")}
+    subtitle={t("expedition.over.reached", { round })}
+    figure={history.map((record) => (
+      <RoundPip key={record.number} ending={record.ending} />
+    ))}
+    detail={
+      <>
+        <p className="text-sm text-chart-200">
+          {t("expedition.over.score", { count: score, hits, cards })}
+        </p>
+        {summited && (
+          <p className="mt-1 text-xs text-signal-400">{t("expedition.summit.done")}</p>
+        )}
+        {challenge && (
+          <p className="mt-1 text-xs text-chart-300">
+            {score > challenge.score
+              ? t("expedition.challenge.beaten", { score: challenge.score })
+              : t("expedition.challenge.missed", { score: challenge.score })}
+          </p>
+        )}
+      </>
+    }
+    actions={
+      <>
+        <StageActionQuiet onClick={onAgain}>{t("expedition.again")}</StageActionQuiet>
+        <StageAction onClick={onShare}>{shareLabel}</StageAction>
+      </>
+    }
+    peek={t("expedition.result.peek")}
+    onDismiss={onDismiss}
+  />
 );

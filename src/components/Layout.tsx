@@ -89,7 +89,12 @@ const LanguageSwitch = () => {
   );
 };
 
-const MuteToggle = () => {
+/**
+ * `onAccent` is for the game bars that turn amber when it is the player's
+ * move: the control is sitting on the accent rather than on the dark surface,
+ * and without it keeps a chart-grey border nobody can see.
+ */
+const MuteToggle = ({ onAccent }: { onAccent?: boolean } = {}) => {
   const { muted, toggleMuted } = useSound();
   const { t } = useLocale();
   return (
@@ -100,8 +105,11 @@ const MuteToggle = () => {
       aria-label={muted ? t("app.unmute") : t("app.mute")}
       aria-pressed={muted}
       className={cx(
-        "tap-target grid h-8 w-8 place-items-center rounded-lg border border-chart-700 text-chart-400 transition-colors hover:bg-chart-800 hover:text-chart-200",
-        muted && "text-chart-600",
+        "tap-target grid h-8 w-8 place-items-center rounded-lg border transition-colors",
+        onAccent
+          ? "border-chart-950/20 text-chart-900 hover:bg-chart-950/10"
+          : "border-chart-700 text-chart-400 hover:bg-chart-800 hover:text-chart-200",
+        muted && !onAccent && "text-chart-600",
       )}
     >
       {muted ? <Emoji symbol="🔇" alt={t("app.unmute")} className="h-5 w-5" /> : <Emoji symbol="🔊" alt={t("app.mute")} className="h-5 w-5" />}
