@@ -451,6 +451,8 @@ export interface ExpeditionRun {
   picks: Picks;
   revealed: boolean;
   over: boolean;
+  /** The current card drawn for this round (randomly selected but seeded). */
+  currentCard?: Category;
 }
 
 export const startRun = (seed: string, config: ExpeditionConfig): ExpeditionRun => ({
@@ -464,20 +466,20 @@ export const startRun = (seed: string, config: ExpeditionConfig): ExpeditionRun 
   picks: {},
   revealed: false,
   over: false,
+  currentCard: undefined,
 });
 
 /**
- * Reveal the round on screen and settle it. A round is perfect or it is not —
- * anything short of every card costs a life, which is what makes the ramp
- * bite. The hits are still counted, so a 5/6 round reads differently from a
- * 1/6 even though both cost the same.
+ * Reveal the round on screen and settle it. In the new mode, only one card
+ * is drawn randomly (but seeded) and needs to be played. If it's correct, no life
+ * is lost. If incorrect, a life is lost.
  */
 export const revealRound = (run: ExpeditionRun, round: ExpeditionRound): ExpeditionRun => {
   if (run.revealed || run.over) return run;
 
-  const total = run.config.categories.length;
-  const hits = roundHits(round, run.config.categories, run.picks);
-  const perfect = hits === total;
+  const currentCard = run.currentCard ?? run.config.categories[0];
+  const hits = roundHits(round, [currentCard], run.picks);
+  const perfect = hits === 1;
   const lives = perfect ? run.lives : run.lives - 1;
 
   return {
@@ -486,16 +488,33 @@ export const revealRound = (run: ExpeditionRun, round: ExpeditionRound): Expedit
     lives,
     over: lives <= 0,
     hits: run.hits + hits,
-    cards: run.cards + total,
-    history: [...run.history, { number: run.round, hits, total, perfect }],
+    cards: run.cards + 1,
+    history: [...run.history, { number: run.round, hits, total: 1, perfect }],
   };
+};
+
+  };
+};
+
+/**
+ * Get the current card to play for a round. This is deterministic based on
+ * the seed and round number, so the same expedition can be shared.
+ */
+export const getCurrentCard = (
+  seed: string,
+  round: number,
+  categories: Category[],
+): Category => {
+  const rng = mulberry32(seedFromString(`urban-compass/expedition/${seed}/card/${round}`));
+  const index = Math.floor(rng() * categories.length);
+  return categories[index];
 };
 
 /** Deal the next round. A finished run stays finished. */
 export const nextRound = (run: ExpeditionRun): ExpeditionRun =>
   run.over || !run.revealed
     ? run
-    : { ...run, round: run.round + 1, picks: {}, revealed: false };
+    : { ...run, round: run.round + 1, picks: {}, revealed: false, currentCard: undefined };
 
 /** How deep the run got — the round it died on. */
 export const roundsReached = (run: ExpeditionRun): number =>

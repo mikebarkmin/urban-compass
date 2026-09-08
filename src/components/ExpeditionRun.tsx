@@ -12,6 +12,7 @@ import {
   EXPEDITION_LIVES,
   ExpeditionConfig,
   ExpeditionRun as Run,
+  getCurrentCard,
   loadExpeditionStats,
   markFor,
   nextRound,
@@ -103,10 +104,15 @@ const ExpeditionRun = ({
   const { play } = useSound();
   useFixedTopBar();
 
-  const [run, setRun] = useState<Run>(() => restored ?? startRun(seed, config));
+  const [run, setRun] = useState<Run>(() => {
+    const initial = restored ?? startRun(seed, config);
+    // Draw the current card for the first round
+    return { ...initial, currentCard: getCurrentCard(seed, initial.round, config.categories) };
+  });
   const [selected, setSelected] = useState<Category | null>(null);
   const [copied, setCopied] = useState(false);
   const [celebrate, setCelebrate] = useState(0);
+  const [drawingCard, setDrawingCard] = useState(false);
 
   // A round in play is worth keeping the screen awake for; a finished run is not.
   useWakeLock(!run.over);
@@ -116,10 +122,19 @@ const ExpeditionRun = ({
     [pool, startRadius, config, run.seed, run.round],
   );
 
+  // Update currentCard when round changes
+  useEffect(() => {
+    if (!run.currentCard && !run.revealed) {
+      const card = getCurrentCard(seed, run.round, config.categories);
+      setRun((current) => ({ ...current, currentCard: card }));
+    }
+  }, [seed, run.round, run.currentCard, run.revealed, config.categories]);
+
   const label = regionLabel(config.region, t);
   const total = config.categories.length;
-  const placed = config.categories.filter((category) => run.picks[category]).length;
-  const ready = placed === total;
+  const currentCard = run.currentCard;
+  const placed = currentCard ? (run.picks[currentCard] ? 1 : 0) : 0;
+  const ready = placed === 1;
   const hits = run.revealed ? run.history[run.history.length - 1]?.hits ?? 0 : 0;
   const perfect = run.revealed && hits === total;
 
@@ -133,8 +148,8 @@ const ExpeditionRun = ({
   }, [run]);
 
   const assign = (cityId: string) => {
-    if (!selected || run.revealed) return;
-    setRun((current) => ({ ...current, picks: { ...current.picks, [selected]: cityId } }));
+    if (!currentCard || run.revealed) return;
+    setRun((current) => ({ ...current, picks: { ...current.picks, [currentCard]: cityId } }));
     setSelected(null);
     play("flip");
   };
@@ -155,6 +170,9 @@ const ExpeditionRun = ({
   const advance = () => {
     setRun((current) => nextRound(current));
     setSelected(null);
+    setDrawingCard(true);
+    // Reset drawingCard after a brief animation
+    setTimeout(() => setDrawingCard(false), 1000);
   };
 
   const share = async () => {
@@ -201,7 +219,9 @@ const ExpeditionRun = ({
         : t("expedition.lostLife")
       : selected
         ? t("daily.hand.pick")
-        : t("expedition.hand.place", { count: total });
+        : currentCard
+          ? t("expedition.hand.placeOne", { card: t(`card.${currentCard}.short`) })
+          : t("expedition.hand.place", { count: total });
 
   return (
     <>
@@ -323,20 +343,23 @@ const ExpeditionRun = ({
               {config.categories.map((category) => {
                 const cityId = run.picks[category];
                 const city = round.cities.find((c) => c.id === cityId);
+                const isCurrent = currentCard === category;
                 const isSelected = selected === category;
                 const mark = run.revealed ? markFor(round, category, cityId) : null;
+                const disabled = run.revealed || !isCurrent;
 
                 return (
                   <CategoryCard
                     key={category}
                     category={category}
                     label={t(`card.${category}.short`)}
-                    disabled={run.revealed}
+                    disabled={disabled}
                     onClick={() => setSelected(isSelected ? null : category)}
-                    tone={mark ?? (isSelected ? "selected" : cityId ? "filled" : "idle")}
+                    tone={mark ?? (isSelected ? "selected" : isCurrent ? "beacon" : cityId ? "filled" : "idle")}
                     className={cx(
-                      !run.revealed && !isSelected && "hover:-translate-y-0.5",
-                      !run.revealed && !isSelected && !cityId && "hover:border-chart-400",
+                      !run.revealed && isCurrent && !isSelected && "hover:-translate-y-0.5",
+                      !run.revealed && isCurrent && !isSelected && !cityId && "hover:border-chart-400",
+                      drawingCard && isCurrent && "animate-pulse",
                     )}
                     footer={
                       city ? (
@@ -365,11 +388,9 @@ const ExpeditionRun = ({
 
             <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
               {round.cities.map((city) => {
-                const here = config.categories.filter(
-                  (category) => run.picks[category] === city.id,
-                );
-                const targetable = !run.revealed && !!selected;
-                const isAnswer = (highlights[city.id] ?? []).length > 0;
+                const here = currentCard ? [currentCard].filter((category) => run.picks[category] === city.id) : [];
+                const targetable = !run.revealed && !!selected && currentCard === selected;
+                const isAnswer = currentCard ? (highlights[city.id] ?? []).includes(currentCard) : false;
 
                 return (
                   <button
@@ -430,10 +451,10 @@ const ExpeditionRun = ({
             </div>
           </Panel>
 
-          {run.revealed && (
+          {run.revealed && currentCard && (
             <Panel title={t("daily.answers")}>
               <div className="grid gap-2 sm:grid-cols-2">
-                {config.categories.map((category) => {
+                {[currentCard].map((category) => {
                   const answer = round.answers[category];
                   const mine = round.cities.find((c) => c.id === run.picks[category]);
                   const mark = markFor(round, category, run.picks[category]);
@@ -562,7 +583,7 @@ const ExpeditionRun = ({
             )}
             <span className="min-w-0 truncate text-sm text-chart-800">
               {run.revealed && !run.over
-                ? t("expedition.roundResult", { hits, total })
+                ? t("expedition.roundResult", { hits: hits, total: 1 })
                 : banner}
             </span>
           </div>

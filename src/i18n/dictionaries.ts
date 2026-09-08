@@ -428,9 +428,9 @@ export const en = {
   "expedition.retry": "Try again",
   "expedition.start": "Start the expedition",
   "expedition.rules.title": "How it goes",
-  "expedition.rules.lives": "You get {count} lives. A round costs one unless every card was right.",
+  "expedition.rules.lives": "You get {count} lives. A round costs one unless the card was right.",
   "expedition.rules.perfect":
-    "Near misses still count towards your cards — but only a perfect round is free.",
+    "A random card is drawn each round — if you place it correctly, no life is lost.",
   "expedition.rules.ramp":
     "Each round is drawn from a tighter circle, until the cities are an hour apart.",
   "expedition.rules.share":
@@ -441,6 +441,7 @@ export const en = {
   "expedition.livesLeft_one": "1 life left",
   "expedition.livesLeft_other": "{count} lives left",
   "expedition.hand.place": "Place all {count}, then reveal. You can move a card until you do.",
+  "expedition.hand.placeOne": "Place {card}, then reveal. You can move it until you do.",
   "expedition.perfect": "Perfect round — no life lost.",
   "expedition.lostLife": "Not every card. That cost a life.",
   "expedition.roundResult": "{hits} of {total} right",
