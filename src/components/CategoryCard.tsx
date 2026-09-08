@@ -17,9 +17,17 @@ export type CardTone =
   | "muted"
   | "hit"
   | "close"
-  | "miss";
+  | "miss"
+  /** The card the expedition has just turned over — the one in play. */
+  | "drawn";
 
 const TONES: Record<CardTone, { surface: string; accent: string; ring: string }> = {
+  drawn: {
+    surface:
+      "-translate-y-0.5 border-beacon-500/70 bg-beacon-500/10 shadow-lg shadow-beacon-500/10",
+    accent: "text-beacon-300",
+    ring: "ring-beacon-500/40",
+  },
   idle: {
     surface: "border-chart-600 bg-chart-850",
     accent: "text-chart-300",

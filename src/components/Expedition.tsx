@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { City } from "../../game/cities";
 import { loadCities } from "@/data/citiesLoader";
 import {
+  Challenge,
   ExpeditionConfig,
   ExpeditionRun as Run,
   MIN_EXPEDITION_POOL,
@@ -25,6 +26,8 @@ interface Started {
   config: ExpeditionConfig;
   /** A run picked back up rather than started fresh. */
   restored: Run | null;
+  /** The score to beat, when the link that opened this carried one. */
+  challenge: Challenge | null;
 }
 
 /**
@@ -55,6 +58,7 @@ const Expedition = () => {
   /** A saved run waiting to be picked up, offered on the setup screen. */
   const [resumable, setResumable] = useState<Run | null>(null);
   const [bestByRegion, setBestByRegion] = useState<Record<string, number>>({});
+  const [summited, setSummited] = useState<string[]>([]);
 
   // The gazetteer is the same fetch `/sets` makes and is cached for the
   // session, so a player who has already built a set pays nothing here.
@@ -88,6 +92,7 @@ const Expedition = () => {
 
     const stats = loadExpeditionStats();
     setBestByRegion(stats.bestByRegion);
+    setSummited(stats.summited);
 
     // A shared link wins: it names a specific run, which is the whole point of
     // sharing it. A saved run is only resumed when the link is the bare page.
@@ -117,7 +122,7 @@ const Expedition = () => {
 
   const start = (config: ExpeditionConfig) => {
     const seed = newSeed();
-    setStarted({ seed, config, restored: null });
+    setStarted({ seed, config, restored: null, challenge: null });
     setLastConfig(config);
     pushRun(seed, config);
   };
@@ -125,7 +130,7 @@ const Expedition = () => {
   const restart = () => {
     if (!started) return;
     const seed = newSeed();
-    setStarted({ seed, config: started.config, restored: null });
+    setStarted({ seed, config: started.config, restored: null, challenge: null });
     pushRun(seed, started.config);
   };
 
@@ -134,6 +139,7 @@ const Expedition = () => {
     const stats = loadExpeditionStats();
     saveExpeditionStats({ ...stats, active: null });
     setBestByRegion(stats.bestByRegion);
+    setSummited(stats.summited);
     setResumable(null);
     setStarted(null);
     router.replace({ pathname: "/expedition", query: {} }, undefined, { shallow: true });
@@ -142,7 +148,12 @@ const Expedition = () => {
   /** Pick the saved run back up, link and all. */
   const resume = () => {
     if (!resumable) return;
-    setStarted({ seed: resumable.seed, config: resumable.config, restored: resumable });
+    setStarted({
+      seed: resumable.seed,
+      config: resumable.config,
+      restored: resumable,
+      challenge: null,
+    });
     pushRun(resumable.seed, resumable.config);
   };
 
@@ -171,6 +182,7 @@ const Expedition = () => {
         onRetry={() => setAttempt((count) => count + 1)}
         initial={lastConfig}
         bestByRegion={bestByRegion}
+        summited={summited}
         resumable={resumable}
         onResume={resume}
         onDiscard={discard}
@@ -209,6 +221,7 @@ const Expedition = () => {
       seed={started.seed}
       config={started.config}
       restored={started.restored}
+      challenge={started.challenge}
       onRestart={restart}
       onReconfigure={reconfigure}
     />

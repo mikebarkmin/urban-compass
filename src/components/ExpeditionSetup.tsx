@@ -17,6 +17,7 @@ import {
   type ExpeditionRun,
   type RegionChoice,
   buildPool,
+  regionFromToken,
   regionToken,
 } from "@/utils/expedition";
 import { useLocale } from "@/i18n";
@@ -90,6 +91,8 @@ interface ExpeditionSetupProps {
   initial?: ExpeditionConfig | null;
   /** Best round reached per region token, so a record shows next to its region. */
   bestByRegion: Record<string, number>;
+  /** Region tokens whose summit has been reached — the conquest map. */
+  summited: string[];
   /** A saved run to offer, or null when there is nothing to pick up. */
   resumable?: ExpeditionRun | null;
   onResume: () => void;
@@ -110,6 +113,7 @@ const ExpeditionSetup = ({
   onRetry,
   initial,
   bestByRegion,
+  summited,
   resumable,
   onResume,
   onDiscard,
@@ -150,6 +154,7 @@ const ExpeditionSetup = ({
   const tooThin = pool !== null && pool.length < MIN_EXPEDITION_POOL;
   const ready = !!pool && !tooThin;
   const best = bestByRegion[regionToken(region)] ?? 0;
+  const conquered = summited.includes(regionToken(region));
 
   const toggleCategory = (category: Category) => {
     setCategories((current) => {
@@ -338,6 +343,9 @@ const ExpeditionSetup = ({
                     {t("expedition.setup.regionBest", { round: best })}
                   </span>
                 )}
+                {conquered && (
+                  <span className="ml-2 text-signal-400">{t("expedition.conquest.here")}</span>
+                )}
               </span>
             )}
           </div>
@@ -359,6 +367,7 @@ const ExpeditionSetup = ({
           <ul className="space-y-3 text-xs text-chart-400">
             <li>{t("expedition.rules.lives", { count: EXPEDITION_LIVES })}</li>
             <li>{t("expedition.rules.perfect")}</li>
+            <li>{t("expedition.rules.close")}</li>
             <li>{t("expedition.rules.ramp")}</li>
             <li>
               <EmojiText
@@ -367,6 +376,30 @@ const ExpeditionSetup = ({
               />
             </li>
           </ul>
+        </Panel>
+
+        <Panel
+          title={t("expedition.conquest.title")}
+          subtitle={t("expedition.conquest.count", { count: summited.length })}
+        >
+          {summited.length === 0 ? (
+            <p className="text-xs text-chart-400">{t("expedition.conquest.none")}</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {summited.map((token) => {
+                const region = regionFromToken(token);
+                if (!region) return null;
+                return (
+                  <span
+                    key={token}
+                    className="inline-flex items-center gap-1 rounded-full border border-signal-500/40 bg-signal-500/10 px-2.5 py-1 text-xs font-medium text-signal-300"
+                  >
+                    {regionLabel(region, t)}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </Panel>
       </div>
     </div>
