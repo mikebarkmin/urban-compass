@@ -58,6 +58,7 @@ const Expedition = () => {
   /** A saved run waiting to be picked up, offered on the setup screen. */
   const [resumable, setResumable] = useState<Run | null>(null);
   const [bestByRegion, setBestByRegion] = useState<Record<string, number>>({});
+  const [bestScoreByRegion, setBestScoreByRegion] = useState<Record<string, number>>({});
   const [summited, setSummited] = useState<string[]>([]);
 
   // The gazetteer is the same fetch `/sets` makes and is cached for the
@@ -92,6 +93,7 @@ const Expedition = () => {
 
     const stats = loadExpeditionStats();
     setBestByRegion(stats.bestByRegion);
+    setBestScoreByRegion(stats.bestScoreByRegion);
     setSummited(stats.summited);
 
     // A shared link wins: it names a specific run, which is the whole point of
@@ -139,6 +141,7 @@ const Expedition = () => {
     const stats = loadExpeditionStats();
     saveExpeditionStats({ ...stats, active: null });
     setBestByRegion(stats.bestByRegion);
+    setBestScoreByRegion(stats.bestScoreByRegion);
     setSummited(stats.summited);
     setResumable(null);
     setStarted(null);
@@ -182,6 +185,7 @@ const Expedition = () => {
         onRetry={() => setAttempt((count) => count + 1)}
         initial={lastConfig}
         bestByRegion={bestByRegion}
+        bestScoreByRegion={bestScoreByRegion}
         summited={summited}
         resumable={resumable}
         onResume={resume}

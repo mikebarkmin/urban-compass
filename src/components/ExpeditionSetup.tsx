@@ -91,6 +91,8 @@ interface ExpeditionSetupProps {
   initial?: ExpeditionConfig | null;
   /** Best round reached per region token, so a record shows next to its region. */
   bestByRegion: Record<string, number>;
+  /** Best score banked per region token, shown beside each conquest. */
+  bestScoreByRegion: Record<string, number>;
   /** Region tokens whose summit has been reached — the conquest map. */
   summited: string[];
   /** A saved run to offer, or null when there is nothing to pick up. */
@@ -113,6 +115,7 @@ const ExpeditionSetup = ({
   onRetry,
   initial,
   bestByRegion,
+  bestScoreByRegion,
   summited,
   resumable,
   onResume,
@@ -390,12 +393,18 @@ const ExpeditionSetup = ({
               {summited.map((token) => {
                 const region = regionFromToken(token);
                 if (!region) return null;
+                const score = bestScoreByRegion[token] ?? 0;
                 return (
                   <span
                     key={token}
-                    className="inline-flex items-center gap-1 rounded-full border border-signal-500/40 bg-signal-500/10 px-2.5 py-1 text-xs font-medium text-signal-300"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-signal-500/40 bg-signal-500/10 px-2.5 py-1 text-xs font-medium text-signal-300"
                   >
                     {regionLabel(region, t)}
+                    {score > 0 && (
+                      <span className="text-signal-400/80 tabular-nums">
+                        {t("expedition.conquest.score", { score })}
+                      </span>
+                    )}
                   </span>
                 );
               })}
