@@ -10,7 +10,10 @@ import {
 } from "../../game/cities";
 import {
   bankRound,
+  canCompass,
   canPush,
+  canSecondWind,
+  COMPASS_STRIKES,
   cardInPlay,
   cardVerdict,
   Challenge,
@@ -31,6 +34,8 @@ import {
   settleCard,
   shareText,
   startRun,
+  spendCompass,
+  spendSecondWind,
 } from "@/utils/expedition";
 import { Mark } from "@/utils/daily";
 import { shareOrCopy } from "@/utils";
@@ -159,6 +164,8 @@ const ExpeditionRun = ({
   const banked = roundScore(streak);
   const stake = pushValue(streak);
   const pushable = canPush(run);
+  const compassReady = canCompass(run);
+  const secondWindReady = canSecondWind(run);
 
   // Once the round is settled the stack is no longer the story: a bust took it
   // all and a near miss kept only what was standing before the last card. The
@@ -214,6 +221,16 @@ const ExpeditionRun = ({
   const push = () => {
     setRun((current) => pushLuck(current));
     play("flip");
+  };
+
+  const compass = () => {
+    setRun((current) => spendCompass(current, round));
+    play("chime");
+  };
+
+  const secondWind = () => {
+    setRun((current) => spendSecondWind(current));
+    play("chime");
   };
 
   const advance = () => setRun((current) => nextRound(current));
@@ -415,7 +432,8 @@ const ExpeditionRun = ({
             <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
               {round.cities.map((city) => {
                 const here = run.draws.filter((category) => run.picks[category] === city.id);
-                const targetable = placing && !run.over;
+                const isStruck = run.struck.includes(city.id);
+                const targetable = placing && !run.over && !isStruck;
                 const isAnswer = (highlights[city.id] ?? []).length > 0;
 
                 return (
@@ -430,10 +448,16 @@ const ExpeditionRun = ({
                         ? "cursor-pointer border-chart-600 bg-chart-850 hover:-translate-y-0.5 hover:border-beacon-500 hover:bg-beacon-500/10"
                         : "cursor-default border-chart-800 bg-chart-900/70",
                       isAnswer && "border-beacon-500/50 bg-beacon-500/[0.07]",
+                      isStruck && "opacity-40",
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="font-display text-sm font-semibold text-chart-100">
+                      <span
+                        className={cx(
+                          "font-display text-sm font-semibold text-chart-100",
+                          isStruck && "text-chart-500 line-through",
+                        )}
+                      >
                         {cityName(city, locale)}
                       </span>
                       {city.country && (
@@ -576,6 +600,27 @@ const ExpeditionRun = ({
               )}
             </div>
 
+            <div className="mt-3 flex items-center gap-3 border-t border-chart-800 pt-3 text-xs">
+              <span
+                className={cx(
+                  "inline-flex items-center gap-1.5",
+                  run.compass > 0 ? "text-chart-300" : "text-chart-600 line-through",
+                )}
+              >
+                <Glyph name="compass" />
+                {t("expedition.compass.name")}
+              </span>
+              <span
+                className={cx(
+                  "inline-flex items-center gap-1.5",
+                  run.secondWind > 0 ? "text-chart-300" : "text-chart-600 line-through",
+                )}
+              >
+                <Glyph name="swap" />
+                {t("expedition.secondWind.name")}
+              </span>
+            </div>
+
             {run.history.length > 0 && (
               <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-chart-800 pt-3">
                 {run.history.map((record) => (
@@ -593,11 +638,49 @@ const ExpeditionRun = ({
                   score: challenge.score,
                 })}
               </p>
-              {run.score > challenge.score && (
-                <p className="mt-2 text-xs font-semibold text-signal-400">
-                  {t("expedition.challenge.ahead")}
-                </p>
+
+              {/* Their run over yours, round for round. One number at the end
+                  is a target; this is the thing you are behind in while you
+                  are still playing. */}
+              {challenge.rounds.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-10 shrink-0 text-[10px] tracking-[0.12em] text-chart-500 uppercase">
+                      {t("expedition.challenge.them")}
+                    </span>
+                    <span className="flex flex-wrap items-center gap-1">
+                      {challenge.rounds.map((ending, index) => (
+                        <RoundPip key={index} ending={ending} />
+                      ))}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-10 shrink-0 text-[10px] tracking-[0.12em] text-chart-500 uppercase">
+                      {t("expedition.challenge.you")}
+                    </span>
+                    <span className="flex flex-wrap items-center gap-1">
+                      {run.history.map((record) => (
+                        <RoundPip key={record.number} ending={record.ending} />
+                      ))}
+                      {/* The round in hand, so the two rows stay aligned. */}
+                      {!run.over && (
+                        <span className="inline-block h-3.5 w-3.5 shrink-0 rounded-[3px] border border-dashed border-chart-600" />
+                      )}
+                    </span>
+                  </div>
+                </div>
               )}
+
+              <p
+                className={cx(
+                  "mt-3 text-xs font-semibold",
+                  run.score > challenge.score ? "text-signal-400" : "text-chart-400",
+                )}
+              >
+                {run.score > challenge.score
+                  ? t("expedition.challenge.ahead")
+                  : t("expedition.challenge.behind", { score: challenge.score - run.score })}
+              </p>
             </Panel>
           )}
 
@@ -654,6 +737,29 @@ const ExpeditionRun = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+            {compassReady && (
+              <button
+                type="button"
+                onClick={compass}
+                title={t("expedition.compass.help", { count: COMPASS_STRIKES })}
+                className="inline-flex items-center gap-1.5 rounded-full border border-chart-950/50 bg-chart-950/10 px-4 py-2.5 text-sm font-bold text-chart-950 transition-all hover:bg-chart-950/20 sm:py-2"
+              >
+                <Glyph name="compass" />
+                {t("expedition.compass.use")}
+              </button>
+            )}
+
+            {secondWindReady && (
+              <button
+                type="button"
+                onClick={secondWind}
+                className="inline-flex items-center gap-1.5 rounded-full border border-chart-950/50 bg-chart-950/10 px-4 py-2.5 text-sm font-bold text-chart-950 transition-all hover:bg-chart-950/20 sm:py-2"
+              >
+                <Glyph name="swap" />
+                {t("expedition.secondWind.use")}
+              </button>
+            )}
+
             {placing && ready && (
               <button
                 type="button"

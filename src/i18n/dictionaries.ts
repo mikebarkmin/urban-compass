@@ -471,6 +471,16 @@ export const en = {
   "expedition.challenge.ahead": "You are ahead.",
   "expedition.challenge.beaten": "Beaten — they had {score}.",
   "expedition.challenge.missed": "They had {score}. Next time.",
+  "expedition.challenge.them": "Them",
+  "expedition.challenge.you": "You",
+  "expedition.challenge.behind": "{score} behind.",
+  "expedition.compass.name": "Compass",
+  "expedition.compass.use": "Compass",
+  "expedition.compass.help": "Strikes {count} wrong cities off the board. One per run.",
+  "expedition.secondWind.name": "Second wind",
+  "expedition.secondWind.use": "Second wind",
+  "expedition.rules.lifelines":
+    "One compass and one second wind per run: the compass thins the board, the second wind takes back a miss — though not your last life. The summit hands you a fresh set.",
   "expedition.conquest.title": "Conquest",
   "expedition.conquest.none":
     "No summits yet. Reach the round where the circle stops closing and the region is yours.",
@@ -1267,6 +1277,16 @@ export const de: Record<MessageKey, string> = {
   "expedition.challenge.ahead": "Du liegst vorn.",
   "expedition.challenge.beaten": "Geschlagen — {score} waren es.",
   "expedition.challenge.missed": "{score} waren es. Nächstes Mal.",
+  "expedition.challenge.them": "Die",
+  "expedition.challenge.you": "Du",
+  "expedition.challenge.behind": "{score} zurück.",
+  "expedition.compass.name": "Kompass",
+  "expedition.compass.use": "Kompass",
+  "expedition.compass.help": "Streicht {count} falsche Städte vom Feld. Einmal pro Lauf.",
+  "expedition.secondWind.name": "Zweiter Atem",
+  "expedition.secondWind.use": "Zweiter Atem",
+  "expedition.rules.lifelines":
+    "Ein Kompass und ein zweiter Atem pro Lauf: der Kompass lichtet das Feld, der zweite Atem nimmt einen Fehlgriff zurück — das letzte Leben aber nicht. Am Gipfel gibt es beide neu.",
   "expedition.conquest.title": "Eroberungen",
   "expedition.conquest.none":
     "Noch kein Gipfel. Erreich die Runde, in der der Kreis aufhört enger zu werden, und die Region gehört dir.",

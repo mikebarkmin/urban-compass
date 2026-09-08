@@ -368,6 +368,7 @@ const ExpeditionSetup = ({
             <li>{t("expedition.rules.lives", { count: EXPEDITION_LIVES })}</li>
             <li>{t("expedition.rules.perfect")}</li>
             <li>{t("expedition.rules.close")}</li>
+            <li>{t("expedition.rules.lifelines")}</li>
             <li>{t("expedition.rules.ramp")}</li>
             <li>
               <EmojiText

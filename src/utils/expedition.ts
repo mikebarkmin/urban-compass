@@ -35,6 +35,19 @@ import type { Mark, Picks } from "@/utils/daily";
 /** Lives at the start of a run. The third one ending it is the whole tension. */
 export const EXPEDITION_LIVES = 3;
 
+/**
+ * One compass and one second wind per run.
+ *
+ * Pushing asks "do you know the next card"; a lifeline asks "is this the round
+ * to spend it on", which is the decision that makes a deep stack worth
+ * defending rather than merely lucky. One of each is deliberately stingy: two
+ * would make every round survivable and there would be nothing to weigh.
+ */
+export const EXPEDITION_LIFELINES = 1;
+
+/** How many cities the compass strikes off the board. */
+export const COMPASS_STRIKES = 3;
+
 /** Cities on a board, matching the daily so the screen reads the same. */
 export const EXPEDITION_BOARD_SIZE = 8;
 
@@ -171,12 +184,32 @@ export const newSeed = (): string =>
 /**
  * What the sender got, carried on the link. A shared expedition already deals
  * the same cards in the same order, so the only thing missing to make it a
- * challenge rather than a copy is the number to beat.
+ * challenge rather than a copy is what happened to them.
+ *
+ * `rounds` is what turns a target into a race: with their round-by-round beside
+ * yours, a run stops being one number at the end and becomes a thing you are
+ * ahead or behind in, round by round, while you play it.
  */
 export interface Challenge {
   round: number;
   score: number;
+  /** How each of their rounds ended, oldest first. */
+  rounds: RoundEnding[];
 }
+
+/** One character per round, so a long run still fits in a pasteable link. */
+const ENDING_CODES: Record<RoundEnding, string> = {
+  banked: "b",
+  close: "c",
+  bust: "x",
+};
+
+const ENDING_BY_CODE = new Map(
+  Object.entries(ENDING_CODES).map(([ending, code]) => [code, ending as RoundEnding]),
+);
+
+/** A run long enough to overflow this is long enough to be summarised. */
+const MAX_SHARED_ROUNDS = 80;
 
 /** The query a run is shared as. */
 export const runQuery = (
@@ -188,7 +221,20 @@ export const runQuery = (
   region: regionToken(config.region),
   cards: config.categories.map((category) => CATEGORY_CODES[category] ?? "").join(""),
   ...(config.popMin > 0 ? { pop: String(config.popMin) } : {}),
-  ...(challenge ? { d: String(challenge.round), s: String(challenge.score) } : {}),
+  ...(challenge
+    ? {
+        d: String(challenge.round),
+        s: String(challenge.score),
+        ...(challenge.rounds.length > 0
+          ? {
+              h: challenge.rounds
+                .slice(0, MAX_SHARED_ROUNDS)
+                .map((ending) => ENDING_CODES[ending])
+                .join(""),
+            }
+          : {}),
+      }
+    : {}),
 });
 
 /** The link a run is shared as, e.g. `https://…/expedition/?r=k3f9x2&…`. */
@@ -225,9 +271,20 @@ export const runFromQuery = (
   // plain share link with no result on it: no challenge, just the expedition.
   const round = Number(query.d);
   const score = Number(query.s);
+  const rounds =
+    typeof query.h === "string"
+      ? [...query.h.slice(0, MAX_SHARED_ROUNDS)].flatMap((code) => {
+          const ending = ENDING_BY_CODE.get(code);
+          return ending ? [ending] : [];
+        })
+      : [];
   const challenge =
     Number.isFinite(round) && round > 0
-      ? { round: Math.floor(round), score: Number.isFinite(score) ? Math.max(0, Math.floor(score)) : 0 }
+      ? {
+          round: Math.floor(round),
+          score: Number.isFinite(score) ? Math.max(0, Math.floor(score)) : 0,
+          rounds,
+        }
       : null;
 
   return {
@@ -583,6 +640,11 @@ export interface ExpeditionRun {
   phase: RoundPhase;
   /** How the round ended, once `phase` is "ended". */
   ending: RoundEnding | null;
+  /** Lifelines left. Spent, never bought — except at the summit. */
+  compass: number;
+  secondWind: number;
+  /** Cities the compass has struck off for the card in play. */
+  struck: string[];
   over: boolean;
 }
 
@@ -648,6 +710,9 @@ export const startRun = (
     settled: 0,
     phase: "placing",
     ending: null,
+    compass: EXPEDITION_LIFELINES,
+    secondWind: EXPEDITION_LIFELINES,
+    struck: [],
     over: false,
   };
 };
@@ -699,6 +764,87 @@ export const settleCard = (run: ExpeditionRun, round: ExpeditionRound): Expediti
   };
 };
 
+/** Whether the compass can still be spent on the card in play. */
+export const canCompass = (run: ExpeditionRun): boolean =>
+  run.phase === "placing" && run.compass > 0 && run.struck.length === 0 && !run.over;
+
+/**
+ * Spend the compass: strike `COMPASS_STRIKES` wrong cities off the board for
+ * the card in play, leaving the answer and a thinner field behind.
+ *
+ * Seeded on the run, the round and the card, so a shared expedition strikes the
+ * same cities for whoever spends it — a lifeline must not quietly hand two
+ * players different boards. A placement already sitting on a struck city is
+ * lifted, since the point is to be told it was wrong.
+ */
+export const spendCompass = (run: ExpeditionRun, round: ExpeditionRound): ExpeditionRun => {
+  const card = cardInPlay(run);
+  if (!card || !canCompass(run)) return run;
+
+  const answer = round.answers[card];
+  const wrong = round.cities.filter((city) => city.id !== answer?.id);
+  const rng = mulberry32(
+    seedFromString(`urban-compass/expedition/${run.seed}/compass/${run.round}/${run.draws.length}`),
+  );
+  // Fisher-Yates as far as we need, so the draw is uniform over the wrong
+  // cities rather than biased towards the front of the board.
+  const pool = [...wrong];
+  const struck: string[] = [];
+  for (let i = 0; i < COMPASS_STRIKES && pool.length > 0; i++) {
+    const [city] = pool.splice(Math.floor(rng() * pool.length), 1);
+    struck.push(city.id);
+  }
+
+  const picks = { ...run.picks };
+  if (struck.includes(picks[card] ?? "")) delete picks[card];
+
+  return { ...run, compass: run.compass - 1, struck, picks };
+};
+
+/**
+ * Whether the round can still be pulled back out of a bust.
+ *
+ * Not on the last life. A second wind that could undo the final bust would be
+ * a resurrection, and the run would already have been folded into the record
+ * by the time it was offered. Losing it to a fatal bust is the point: hold it
+ * too long and it dies with you, which is what makes spending it a decision
+ * rather than a formality.
+ */
+export const canSecondWind = (run: ExpeditionRun): boolean =>
+  run.phase === "ended" && run.ending === "bust" && run.secondWind > 0 && !run.over;
+
+/**
+ * Spend the second wind: rewind the card that busted.
+ *
+ * The life comes back, the stack comes back, and the card returns to the table
+ * with the placement lifted — so what the player keeps is the knowledge that
+ * their first answer was wrong. It rescues a bust and nothing else: a near miss
+ * already keeps both the life and the score, and letting it be rewound too
+ * would collapse the distinction the runner-up exists to draw.
+ */
+export const spendSecondWind = (run: ExpeditionRun): ExpeditionRun => {
+  const card = lastCard(run);
+  if (!card || !canSecondWind(run)) return run;
+
+  const picks = { ...run.picks };
+  delete picks[card];
+
+  return {
+    ...run,
+    secondWind: run.secondWind - 1,
+    lives: run.lives + 1,
+    over: false,
+    settled: run.settled - 1,
+    cards: run.cards - 1,
+    history: run.history.slice(0, -1),
+    picks,
+    // The strikes stay. The compass was already spent on this card, and taking
+    // its answer back with the placement would charge for it twice.
+    phase: "placing",
+    ending: null,
+  };
+};
+
 /** Take the round's stack and walk away from the board. */
 export const bankRound = (run: ExpeditionRun): ExpeditionRun => {
   if (run.phase !== "crossroads" || run.over) return run;
@@ -734,13 +880,24 @@ export const pushLuck = (run: ExpeditionRun): ExpeditionRun => {
     run.config.categories,
     run.draws,
   );
-  return { ...run, draws: [...run.draws, next], phase: "placing", ending: null };
+  return {
+    ...run,
+    draws: [...run.draws, next],
+    phase: "placing",
+    ending: null,
+    struck: [],
+  };
 };
 
 /** Deal the next round. A finished run stays finished. */
 export const nextRound = (run: ExpeditionRun): ExpeditionRun => {
   if (run.over || run.phase !== "ended") return run;
   const number = run.round + 1;
+
+  // Cresting the summit hands back a fresh set of lifelines. The circle stops
+  // closing there and obscurity takes over, so the second half of a run is a
+  // different climb — and it deserves to start equipped.
+  const cresting = !run.summited && number >= run.summitAt;
 
   return {
     ...run,
@@ -750,7 +907,10 @@ export const nextRound = (run: ExpeditionRun): ExpeditionRun => {
     settled: 0,
     phase: "placing",
     ending: null,
-    summited: run.summited || number >= run.summitAt,
+    struck: [],
+    compass: cresting ? EXPEDITION_LIFELINES : run.compass,
+    secondWind: cresting ? EXPEDITION_LIFELINES : run.secondWind,
+    summited: run.summited || cresting,
   };
 };
 
@@ -814,6 +974,11 @@ const regionTokenOf = (value: unknown): string | null => {
 };
 
 const ENDINGS: RoundEnding[] = ["banked", "close", "bust"];
+
+const clampLifeline = (value: unknown): number =>
+  value === undefined
+    ? EXPEDITION_LIFELINES
+    : Math.min(EXPEDITION_LIFELINES, Math.max(0, Number(value) || 0));
 const PHASES: RoundPhase[] = ["placing", "crossroads", "ended"];
 
 const readRun = (value: unknown): ExpeditionRun | null => {
@@ -891,6 +1056,14 @@ const readRun = (value: unknown): ExpeditionRun | null => {
     settled,
     phase,
     ending: ENDINGS.includes(raw.ending as RoundEnding) ? (raw.ending as RoundEnding) : null,
+    // A run saved before lifelines existed reads back with a full set rather
+    // than none: the generous reading is the one that cannot lose a player
+    // something they had.
+    compass: clampLifeline(raw.compass),
+    secondWind: clampLifeline(raw.secondWind),
+    struck: Array.isArray(raw.struck)
+      ? (raw.struck as unknown[]).filter((id): id is string => typeof id === "string")
+      : [],
     over: raw.over === true,
   };
 };
@@ -1032,6 +1205,7 @@ export const shareText = (
       runUrl(origin, run.seed, run.config, {
         round: roundsReached(run),
         score: run.score,
+        rounds: run.history.map((record) => record.ending),
       }),
     );
   }
