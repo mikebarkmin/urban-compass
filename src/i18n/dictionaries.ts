@@ -450,7 +450,10 @@ export const en = {
   "expedition.pts": "pts",
   "expedition.streak": "{count} on the table · {score} pts",
   "expedition.crossroads": "Right. Bank {score}, or push for one more.",
-  "expedition.endedClose": "The runner-up — no life lost, and you keep {score}.",
+  "expedition.endedBanked_one": "Banked. 1 point, and the life stays.",
+  "expedition.endedBanked_other": "Banked. {count} points, and the life stays.",
+  "expedition.endedClose_one": "The runner-up — no life lost, and you keep 1 point.",
+  "expedition.endedClose_other": "The runner-up — no life lost, and you keep {count} points.",
   "expedition.endedBust": "Wrong city. That cost a life.",
   "expedition.bank": "Bank {score}",
   "expedition.push": "Push +{value}",
@@ -464,10 +467,13 @@ export const en = {
   "expedition.summit.past":
     "Summit reached — the circle can close no further. From here the cities get smaller instead.",
   "expedition.summit.done": "You reached the summit on this run.",
-  "expedition.over.score": "{score} points · {hits} of {cards} cards right.",
+  "expedition.over.score_one": "1 point · {hits} of {cards} cards right.",
+  "expedition.over.score_other": "{count} points · {hits} of {cards} cards right.",
   "expedition.challenge.title": "The mark to beat",
-  "expedition.challenge.body":
-    "Whoever sent this got to round {round} for {score} points — same seed, same cards, same order.",
+  "expedition.challenge.body_one":
+    "Whoever sent this got to round {round} for 1 point — same seed, same cards, same order.",
+  "expedition.challenge.body_other":
+    "Whoever sent this got to round {round} for {count} points — same seed, same cards, same order.",
   "expedition.challenge.ahead": "You are ahead.",
   "expedition.challenge.beaten": "Beaten — they had {score}.",
   "expedition.challenge.missed": "They had {score}. Next time.",
@@ -1256,7 +1262,10 @@ export const de: Record<MessageKey, string> = {
   "expedition.pts": "Pkt",
   "expedition.streak": "{count} auf dem Tisch · {score} Pkt",
   "expedition.crossroads": "Richtig. {score} sichern — oder noch eine ziehen.",
-  "expedition.endedClose": "Der Zweitplatzierte — kein Leben verloren, und {score} bleiben dir.",
+  "expedition.endedBanked_one": "Gesichert. 1 Punkt, und das Leben bleibt.",
+  "expedition.endedBanked_other": "Gesichert. {count} Punkte, und das Leben bleibt.",
+  "expedition.endedClose_one": "Der Zweitplatzierte — kein Leben verloren, und 1 Punkt bleibt dir.",
+  "expedition.endedClose_other": "Der Zweitplatzierte — kein Leben verloren, und {count} Punkte bleiben dir.",
   "expedition.endedBust": "Falsche Stadt. Das kostet ein Leben.",
   "expedition.bank": "{score} sichern",
   "expedition.push": "Weiter +{value}",
@@ -1270,13 +1279,16 @@ export const de: Record<MessageKey, string> = {
   "expedition.summit.past":
     "Gipfel erreicht — enger wird der Kreis nicht mehr. Ab hier werden stattdessen die Städte kleiner.",
   "expedition.summit.done": "Auf diesem Lauf hast du den Gipfel erreicht.",
-  "expedition.over.score": "{score} Punkte · {hits} von {cards} Karten richtig.",
+  "expedition.over.score_one": "1 Punkt · {hits} von {cards} Karten richtig.",
+  "expedition.over.score_other": "{count} Punkte · {hits} von {cards} Karten richtig.",
   "expedition.challenge.title": "Die Marke",
-  "expedition.challenge.body":
-    "Wer dir das geschickt hat, kam bis Runde {round} und auf {score} Punkte — gleicher Seed, gleiche Karten, gleiche Reihenfolge.",
+  "expedition.challenge.body_one":
+    "Wer dir das geschickt hat, kam bis Runde {round} und auf 1 Punkt — gleicher Seed, gleiche Karten, gleiche Reihenfolge.",
+  "expedition.challenge.body_other":
+    "Wer dir das geschickt hat, kam bis Runde {round} und auf {count} Punkte — gleicher Seed, gleiche Karten, gleiche Reihenfolge.",
   "expedition.challenge.ahead": "Du liegst vorn.",
-  "expedition.challenge.beaten": "Geschlagen — {score} waren es.",
-  "expedition.challenge.missed": "{score} waren es. Nächstes Mal.",
+  "expedition.challenge.beaten": "Geschlagen — die Marke lag bei {score}.",
+  "expedition.challenge.missed": "Die Marke lag bei {score}. Nächstes Mal.",
   "expedition.challenge.them": "Die",
   "expedition.challenge.you": "Du",
   "expedition.challenge.behind": "{score} zurück.",

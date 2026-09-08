@@ -270,14 +270,21 @@ const ExpeditionRun = ({
     return map;
   }, {});
 
+  // Keyed on the ending rather than tested for one, so a new ending has to be
+  // given words here instead of quietly inheriting the message for a bust —
+  // which is exactly how banking a correct card came to say "wrong city".
+  const ENDING_BANNER: Record<RoundEnding, string> = {
+    banked: t("expedition.endedBanked", { count: worth }),
+    close: t("expedition.endedClose", { count: worth }),
+    bust: t("expedition.endedBust"),
+  };
+
   const banner = run.over
     ? t("expedition.over.title")
     : crossroads
       ? t("expedition.crossroads", { score: banked })
-      : ended
-        ? run.ending === "close"
-          ? t("expedition.endedClose", { score: worth })
-          : t("expedition.endedBust")
+      : ended && run.ending
+        ? ENDING_BANNER[run.ending]
         : inPlay
           ? ready
             ? t("expedition.hand.ready", { card: t(`card.${inPlay}.short`) })
@@ -363,7 +370,7 @@ const ExpeditionRun = ({
                 ))}
               </div>
               <p className="mt-3 text-xs text-chart-400">
-                {t("expedition.over.score", { score: run.score, hits: run.hits, cards: run.cards })}
+                {t("expedition.over.score", { count: run.score, hits: run.hits, cards: run.cards })}
               </p>
               {run.summited && (
                 <p className="mt-1 text-xs text-beacon-400">{t("expedition.summit.done")}</p>
@@ -635,7 +642,7 @@ const ExpeditionRun = ({
               <p className="text-xs text-chart-400">
                 {t("expedition.challenge.body", {
                   round: challenge.round,
-                  score: challenge.score,
+                  count: challenge.score,
                 })}
               </p>
 
