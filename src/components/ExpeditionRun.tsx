@@ -383,12 +383,12 @@ const ExpeditionRun = ({
 
                 return (
                   <CategoryCard
-                    key={category}
+                    key={isInPlay ? `${category}-${run.round}-${run.draws.length}` : category}
                     category={category}
                     label={t(`card.${category}.short`)}
                     disabled
                     tone={mark ?? (isInPlay ? "drawn" : "muted")}
-                    className={cx(isInPlay && !ready && "animate-pulse")}
+                    className={cx(isInPlay && "animate-deal")}
                     footer={
                       city ? (
                         <span className="text-chart-300">{cityName(city, locale)}</span>
@@ -406,7 +406,7 @@ const ExpeditionRun = ({
             title={t("expedition.board")}
             subtitle={t("expedition.streak", { count: onTable, score: worth })}
           >
-            {round.cities.length > 0 && (
+            {ended && round.cities.length > 0 && (
               <div className="mb-3">
                 <MiniMap cities={round.cities} highlights={highlights} height={260} />
               </div>
@@ -462,7 +462,7 @@ const ExpeditionRun = ({
                       )}
                     </div>
 
-                    {!placing && (
+                    {ended && (
                       <div className="mt-2 font-mono text-[10px] text-chart-500">
                         {formatCoordinate(city.latitude, "lat")} ·{" "}
                         {formatCoordinate(city.longitude, "lon")} ·{" "}
@@ -672,7 +672,7 @@ const ExpeditionRun = ({
                 <button
                   type="button"
                   onClick={bank}
-                  className="text-sm font-semibold text-chart-900 underline underline-offset-4 hover:text-chart-950"
+                  className="rounded-full border border-chart-950/50 bg-chart-950/10 px-5 py-2.5 text-sm font-bold text-chart-950 transition-all hover:bg-chart-950/20 sm:py-2"
                 >
                   {t("expedition.bank", { score: banked })}
                 </button>

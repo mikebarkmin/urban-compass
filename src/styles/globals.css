@@ -38,6 +38,7 @@
   --animate-confetti-fade: confetti-fade 0.8s ease-out both;
   --animate-count-up: count-up 0.4s ease-out both;
   --animate-verdict-shake: verdict-shake 0.45s ease-out both;
+  --animate-deal: deal 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes appear {
     from {
@@ -87,6 +88,20 @@
     }
     to {
       transform: rotateY(0deg);
+    }
+  }
+
+  /* A card being turned face-up onto the table. The perspective lives in the
+     transform rather than on a wrapper, so a card can deal itself in without
+     the row around it needing a 3D scene. */
+  @keyframes deal {
+    from {
+      opacity: 0;
+      transform: perspective(700px) rotateY(-75deg) translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: perspective(700px) rotateY(0deg) translateY(0);
     }
   }
 
