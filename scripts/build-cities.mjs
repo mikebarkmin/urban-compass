@@ -31,10 +31,25 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
+// Districts that GeoNames files as a city in their own right (feature code
+// PPL rather than PPLX) and that the feature-code filter below therefore
+// cannot catch. Each one needs the reason written down, because the only
+// evidence against them is knowing the place.
+//
+//   2866110 Neubrück — a quarter of Grevenbroich in the Rhein-Kreis Neuss
+//           (it shares admin4 code 05162008 with the Grevenbroich row), and
+//           the name of a Cologne quarter besides. Its population, 51,109, is
+//           not the quarter's few thousand but a figure of the surrounding
+//           municipality, which put a residential district on the board as a
+//           mid-sized German city.
+const EXCLUDED_GEONAME_IDS = new Set(["2866110"]);
+
 /** Parse a geonames row into the fields the game needs. */
 const parseCity = (line) => {
   const c = line.split("\t");
   if (c.length < 18) return null;
+
+  if (EXCLUDED_GEONAME_IDS.has(c[0])) return null;
 
   // Feature code (column 8) identifies what kind of place a row is. The
   // cities5000 dump includes feature class P (populated places), but that
