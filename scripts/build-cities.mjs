@@ -89,11 +89,35 @@ const parseCity = (line) => {
   ];
 };
 
+// German names the isHistoric flag gets wrong, because GeoNames raises it when
+// the *English* name changes rather than when German usage does.
+//
+//   1275004 Kolkata — German still says Kalkutta (it is the Duden headword);
+//           it is Calcutta that was retired, in 2001.
+//
+// Kept deliberately short: every entry here is a claim about current usage
+// that nothing in the dumps can check, so a name belongs in this map only when
+// the flags demonstrably misread it — not merely because the exonym is
+// familiar. Cassel, Tsingtau, Memel and Lemberg are all correctly flagged.
+const GERMAN_NAME_OVERRIDES = {
+  1275004: "Kalkutta",
+};
+
 /**
  * Stream alternateNamesV2.txt and build a map of geonameid -> German name,
  * keeping only rows whose geonameId is in `cityIds`. A row with isPreferred
  * === "1" wins; otherwise the first non-empty `de` name is used. The file is
  * streamed line by line so the 747 MB source is never held in memory.
+ *
+ * Rows flagged isHistoric or isColloquial are skipped. GeoNames orders its
+ * alternate names by alternateNameId, not by currency, so the oldest row often
+ * comes first: Kassel (2892518) carries `Cassel` (isHistoric) ahead of
+ * `Kassel`, and taking the first row put the pre-1926 spelling on the board.
+ * The same flags keep `Spargelstadt Beelitz` and a shelf of former German
+ * names for Polish and Czech cities — `Waldenburg in Schlesien` for Wałbrzych,
+ * `Memel` for Klaipėda — out of a game that means to read as current German.
+ * Exonyms still in use (Danzig, Prag, Warschau, Mailand) carry neither flag
+ * and are unaffected.
  */
 const buildGermanNames = async (cityIds) => {
   const preferred = new Map();
@@ -115,6 +139,7 @@ const buildGermanNames = async (cityIds) => {
       if (c.length < 5 || c[2] !== "de") continue; // isolanguage
       const geonameId = c[1];
       if (!cityIds.has(geonameId)) continue;
+      if (c[6] === "1" || c[7] === "1") continue; // isColloquial, isHistoric
       const name = c[3];
       if (!name) continue;
       if (c[4] === "1") preferred.set(geonameId, name);
@@ -127,6 +152,9 @@ const buildGermanNames = async (cityIds) => {
   const names = new Map();
   for (const [id, name] of fallback) names.set(id, name);
   for (const [id, name] of preferred) names.set(id, name);
+  for (const [id, name] of Object.entries(GERMAN_NAME_OVERRIDES)) {
+    names.set(id, name);
+  }
   return names;
 };
 
