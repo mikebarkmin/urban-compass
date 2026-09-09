@@ -272,10 +272,15 @@ The pool is the one place it differs from the daily. The daily draws from a
 built-in set, which costs no round trip; an expedition has to be able to say
 "Iceland", so it takes the same `loadCities()` fetch that `/sets` makes (1.6 MB
 over the wire, cached for the session) and filters it with `matchingCities` —
-`CONTINENT_BOUNDS` for a continent, a country code for a country, nothing for
-the world. `src/data/regions.ts` holds those bounds and the country chips, which
-the city-set builder shares. The result is trimmed to the 4,000 biggest cities in
-the region, which is one rule that behaves sensibly everywhere: worldwide it is
+`CONTINENT_COUNTRIES` for a continent, a country code for a country, nothing for
+the world. `src/data/regions.ts` holds that mapping — GeoNames' own continent
+column, so a city and its continent come from the same gazetteer — alongside the
+country chips and the rough `CONTINENT_BOUNDS` boxes, which now only seed the
+city-set builder's lat/lon fields. A continent used to *be* its box, which is
+why Aleppo turned up in Europe. Europe keeps one bound on top of its country
+list, cutting Russia at the Urals so that every European run does not share the
+same easternmost city. The result is trimmed to the 4,000 biggest cities in the
+region, which is one rule that behaves sensibly everywhere: worldwide it is
 the best-known cities, and for a small country it is all of them.
 
 A population floor (`popMin`, defaulting to 0) sits between the region filter and
@@ -387,7 +392,7 @@ The project is a monorepo holding both the client (Next.js) and the server
 | `src/hooks/useWakeLock`   | Holds the screen awake while a turn is live                 |
 | `src/utils/daily.ts`      | The daily puzzle: seeding, marking, streaks, share text      |
 | `src/utils/expedition.ts` | The expedition: region pools, the closing-in ramp, lives, the seeded run and its share link |
-| `src/data/regions.ts`     | Continent bounding boxes and the country chips, shared by the builder and the expedition |
+| `src/data/regions.ts`     | Continent membership (country lists), the rough boxes the builder seeds from, and the country chips |
 | `src/utils/kmz.ts`        | KMZ/KML import: archive unpack, placemark parsing, coordinate detection |
 | `src/utils/kmzExport.ts`  | KMZ export: builds a KMZ from a city set in the browser     |
 | `src/i18n/`               | The English and German dictionaries and the locale provider |

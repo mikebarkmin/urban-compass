@@ -12,7 +12,11 @@ import {
   seedFromString,
 } from "../../game/cities";
 import { matchingCities, type FilterParams } from "@/data/cityFilter";
-import { CONTINENT_BOUNDS, type ContinentKey } from "@/data/regions";
+import {
+  CONTINENT_COUNTRIES,
+  EUROPE_LONGITUDES,
+  type ContinentKey,
+} from "@/data/regions";
 import type { Mark, Picks } from "@/utils/daily";
 
 /**
@@ -101,11 +105,22 @@ export type RegionChoice =
 
 export const WORLD: RegionChoice = { kind: "world" };
 
-/** The filter a region asks of the gazetteer. */
+/**
+ * The filter a region asks of the gazetteer.
+ *
+ * A continent is its countries, not its bounding box. The box that used to
+ * stand in for Europe reached far enough east and south to sweep in Aleppo,
+ * Tel Aviv and Casablanca, which is a fine way to lose a run on a card you
+ * answered correctly. Europe alone keeps a longitude window on top of the
+ * country list, to cut Russia at the Urals — see `EUROPE_LONGITUDES`.
+ */
 export const regionFilter = (region: RegionChoice): FilterParams => {
   switch (region.kind) {
     case "continent":
-      return CONTINENT_BOUNDS[region.key];
+      return {
+        countries: CONTINENT_COUNTRIES[region.key],
+        ...(region.key === "europe" ? EUROPE_LONGITUDES : {}),
+      };
     case "country":
       return { countries: [region.code] };
     default:
@@ -133,7 +148,7 @@ export const regionFromToken = (value: unknown): RegionChoice | null => {
   if (value === "world") return WORLD;
 
   const [kind, rest] = value.split(".");
-  if (kind === "continent" && rest && rest in CONTINENT_BOUNDS) {
+  if (kind === "continent" && rest && rest in CONTINENT_COUNTRIES) {
     return { kind: "continent", key: rest as ContinentKey };
   }
   if (kind === "country" && rest) {
