@@ -445,7 +445,9 @@ export const en = {
   "expedition.rules.close":
     "Land on the runner-up and the round ends — but it costs no life, and you keep what the round was worth.",
   "expedition.rules.ramp":
-    "Each round is drawn from a tighter circle, until the cities are an hour apart. That is the summit — and past it the cities start getting smaller instead.",
+    "Each round is drawn from a tighter circle, until the region has no tighter circle to give. That is the summit. Past it comes the descent: the cities get smaller, the answers get closer, and the rounds start asking for more than one card.",
+  "expedition.rules.conquest":
+    "The descent runs {count} rounds. Come out the far side of it still alive and the region is conquered — that is how an expedition is won rather than merely survived.",
   "expedition.rules.share":
     "The run ends on a link that carries the whole expedition — whoever opens it plays exactly the same one. 🧭",
   "expedition.back": "Back to the start",
@@ -488,7 +490,8 @@ export const en = {
   "expedition.result.yours": "You played {city}.",
   "expedition.result.peek": "Tap outside to look at the board again.",
   "expedition.dial.climb": "Round {round} of {summit} to the summit — the board is drawn from {radius} km.",
-  "expedition.dial.summited": "Past the summit on round {round} — the circle is as tight as it goes.",
+  "expedition.dial.descent":
+    "Descent {round} of {total} — the circle is as tight as it goes, and the region falls at the end of it.",
   "expedition.lastLife": "Last life",
   "expedition.crossroads": "Right. Bank {score}, or push for one more.",
   "expedition.endedBanked_one": "Banked. 1 point, and the life stays.",
@@ -505,7 +508,7 @@ export const en = {
   "expedition.summit.toGo_one": "1 round to the summit",
   "expedition.summit.toGo_other": "{count} rounds to the summit",
   "expedition.summit.past":
-    "Summit reached — the circle can close no further. From here the cities get smaller instead.",
+    "Summit reached — the circle can close no further. {count} rounds of descent left, and the region falls.",
   "expedition.summit.done": "You reached the summit on this run.",
   "expedition.over.score_one": "1 point · {hits} of {cards} cards right.",
   "expedition.over.score_other": "{count} points · {hits} of {cards} cards right.",
@@ -529,10 +532,19 @@ export const en = {
     "One compass and one second wind per run: the compass thins the board, the second wind takes back a miss — though not your last life. The summit hands you a fresh set.",
   "expedition.conquest.title": "Conquest",
   "expedition.conquest.none":
-    "No summits yet. Reach the round where the circle stops closing and the region is yours.",
-  "expedition.conquest.count_one": "1 region topped",
-  "expedition.conquest.count_other": "{count} regions topped",
-  "expedition.conquest.here": "summited",
+    "Nothing taken yet. Reach the summit, then walk the descent to its end and the region is yours.",
+  "expedition.conquest.count_one": "1 region conquered",
+  "expedition.conquest.count_other": "{count} regions conquered",
+  "expedition.conquest.here": "conquered",
+  "expedition.conquest.topped": "summited",
+  "expedition.conquered.title": "Conquered!",
+  "expedition.conquered.reached": "All {round} rounds, start to finish.",
+  "expedition.conquered.done":
+    "You walked the descent to its end. This region is yours.",
+  "expedition.quota.badge": "{done}/{count} cards",
+  "expedition.quota.hint_one": "This round takes 1 card before you can bank.",
+  "expedition.quota.hint_other":
+    "The descent takes {count} cards this round before you can bank.",
   "expedition.conquest.score": "{score} pts",
   "expedition.next": "Next round",
   "expedition.share": "Share the run",
@@ -1296,7 +1308,9 @@ export const de: Record<MessageKey, string> = {
   "expedition.rules.close":
     "Erwischst du die zweitbeste Stadt, ist die Runde vorbei — sie kostet aber kein Leben, und die Punkte bleiben dir.",
   "expedition.rules.ramp":
-    "Jede Runde wird aus einem engeren Kreis gezogen, bis zwischen den Städten nur noch eine Autostunde liegt. Das ist der Gipfel — von da an werden nicht mehr die Wege kürzer, sondern die Städte kleiner.",
+    "Jede Runde wird aus einem engeren Kreis gezogen, bis die Region keinen engeren mehr hergibt. Das ist der Gipfel. Danach kommt der Abstieg: die Städte werden kleiner, die Antworten rücken zusammen, und die Runden verlangen mehr als eine Karte.",
+  "expedition.rules.conquest":
+    "Der Abstieg dauert {count} Runden. Wer lebend unten ankommt, hat die Region erobert — so gewinnt man eine Expedition, statt sie nur zu überleben.",
   "expedition.rules.share":
     "Am Ende bekommst du einen Link mit der ganzen Expedition darin — wer ihn öffnet, spielt exakt dieselbe. 🧭",
   "expedition.back": "Zurück zum Anfang",
@@ -1339,7 +1353,8 @@ export const de: Record<MessageKey, string> = {
   "expedition.result.yours": "Du hast {city} gespielt.",
   "expedition.result.peek": "Tippe daneben, um die Auslage anzusehen.",
   "expedition.dial.climb": "Runde {round} von {summit} bis zum Gipfel — die Auslage kommt aus {radius} km.",
-  "expedition.dial.summited": "Seit Runde {round} jenseits des Gipfels — enger wird der Kreis nicht.",
+  "expedition.dial.descent":
+    "Abstieg {round} von {total} — enger wird der Kreis nicht, und am Ende fällt die Region.",
   "expedition.lastLife": "Letztes Leben",
   "expedition.crossroads": "Richtig. Aussteigen oder weiterziehen?",
   "expedition.endedBanked_one": "Gesichert. 1 Punkt, und das Leben bleibt.",
@@ -1356,7 +1371,7 @@ export const de: Record<MessageKey, string> = {
   "expedition.summit.toGo_one": "Noch 1 Runde bis zum Gipfel",
   "expedition.summit.toGo_other": "Noch {count} Runden bis zum Gipfel",
   "expedition.summit.past":
-    "Gipfel erreicht — enger wird der Kreis nicht mehr. Ab hier werden die Städte kleiner.",
+    "Gipfel erreicht — enger wird der Kreis nicht mehr. Noch {count} Runden Abstieg, dann fällt die Region.",
   "expedition.summit.done": "Auf diesem Lauf hast du den Gipfel erreicht.",
   "expedition.over.score_one": "1 Punkt · {hits} von {cards} Karten richtig.",
   "expedition.over.score_other": "{count} Punkte · {hits} von {cards} Karten richtig.",
@@ -1380,10 +1395,19 @@ export const de: Record<MessageKey, string> = {
     "Pro Lauf hast du einen Kompass und eine zweite Chance: Der Kompass streicht drei falsche Städte, die zweite Chance nimmt einen Fehlgriff zurück — beim letzten Leben aber nicht mehr. Am Gipfel bekommst du beide neu.",
   "expedition.conquest.title": "Eroberungen",
   "expedition.conquest.none":
-    "Noch kein Gipfel. Erreiche die Runde, in der der Kreis nicht mehr enger wird — dann gehört die Region dir.",
-  "expedition.conquest.count_one": "1 Region bezwungen",
-  "expedition.conquest.count_other": "{count} Regionen bezwungen",
-  "expedition.conquest.here": "bezwungen",
+    "Noch nichts erobert. Erreiche den Gipfel und gehe den Abstieg bis zum Ende — dann gehört die Region dir.",
+  "expedition.conquest.count_one": "1 Region erobert",
+  "expedition.conquest.count_other": "{count} Regionen erobert",
+  "expedition.conquest.here": "erobert",
+  "expedition.conquest.topped": "bezwungen",
+  "expedition.conquered.title": "Erobert!",
+  "expedition.conquered.reached": "Alle {round} Runden, von vorn bis hinten.",
+  "expedition.conquered.done":
+    "Du bist den Abstieg bis zum Ende gegangen. Diese Region gehört dir.",
+  "expedition.quota.badge": "{done}/{count} Karten",
+  "expedition.quota.hint_one": "Diese Runde verlangt 1 Karte, bevor du einlösen kannst.",
+  "expedition.quota.hint_other":
+    "Der Abstieg verlangt in dieser Runde {count} Karten, bevor du einlösen kannst.",
   "expedition.conquest.score": "{score} Pkt",
   "expedition.next": "Nächste Runde",
   "expedition.share": "Lauf teilen",

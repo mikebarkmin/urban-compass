@@ -8,12 +8,12 @@ import {
   ExpeditionRun as Run,
   MIN_EXPEDITION_POOL,
   buildPool,
+  expeditionRamp,
   loadExpeditionStats,
   newSeed,
   runFromQuery,
   runQuery,
   saveExpeditionStats,
-  startRadiusKm,
 } from "@/utils/expedition";
 import { useLocale } from "@/i18n";
 import { Button, Panel } from "./ui";
@@ -60,6 +60,7 @@ const Expedition = () => {
   const [bestByRegion, setBestByRegion] = useState<Record<string, number>>({});
   const [bestScoreByRegion, setBestScoreByRegion] = useState<Record<string, number>>({});
   const [summited, setSummited] = useState<string[]>([]);
+  const [conquered, setConquered] = useState<string[]>([]);
 
   // The gazetteer is the same fetch `/sets` makes and is cached for the
   // session, so a player who has already built a set pays nothing here.
@@ -95,6 +96,7 @@ const Expedition = () => {
     setBestByRegion(stats.bestByRegion);
     setBestScoreByRegion(stats.bestScoreByRegion);
     setSummited(stats.summited);
+    setConquered(stats.conquered);
 
     // A shared link wins: it names a specific run, which is the whole point of
     // sharing it. A saved run is only resumed when the link is the bare page.
@@ -120,7 +122,12 @@ const Expedition = () => {
     () => (cities && started ? buildPool(cities, started.config) : null),
     [cities, started],
   );
-  const startRadius = useMemo(() => (pool ? startRadiusKm(pool) : 0), [pool]);
+  // The floor costs a sweep of the pool, so the ramp is measured once here and
+  // handed down rather than recomputed per round.
+  const ramp = useMemo(
+    () => (pool ? expeditionRamp(pool) : { startKm: 0, floorKm: 0 }),
+    [pool],
+  );
 
   const start = (config: ExpeditionConfig) => {
     const seed = newSeed();
@@ -143,6 +150,7 @@ const Expedition = () => {
     setBestByRegion(stats.bestByRegion);
     setBestScoreByRegion(stats.bestScoreByRegion);
     setSummited(stats.summited);
+    setConquered(stats.conquered);
     setResumable(null);
     setStarted(null);
     router.replace({ pathname: "/expedition", query: {} }, undefined, { shallow: true });
@@ -187,6 +195,7 @@ const Expedition = () => {
         bestByRegion={bestByRegion}
         bestScoreByRegion={bestScoreByRegion}
         summited={summited}
+        conquered={conquered}
         resumable={resumable}
         onResume={resume}
         onDiscard={discard}
@@ -221,7 +230,7 @@ const Expedition = () => {
       // A new seed is a new run: remount rather than carry the old state over.
       key={started.seed}
       pool={pool}
-      startRadius={startRadius}
+      ramp={ramp}
       seed={started.seed}
       config={started.config}
       restored={started.restored}

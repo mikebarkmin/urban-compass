@@ -8,6 +8,7 @@ import {
 } from "@/data/regions";
 import {
   DEFAULT_POP_MIN,
+  DESCENT_ROUNDS,
   EXPEDITION_CATEGORIES,
   EXPEDITION_LIVES,
   EXPEDITION_MIN_CATEGORIES,
@@ -95,6 +96,7 @@ interface ExpeditionSetupProps {
   bestScoreByRegion: Record<string, number>;
   /** Region tokens whose summit has been reached — the conquest map. */
   summited: string[];
+  conquered: string[];
   /** A saved run to offer, or null when there is nothing to pick up. */
   resumable?: ExpeditionRun | null;
   onResume: () => void;
@@ -117,6 +119,7 @@ const ExpeditionSetup = ({
   bestByRegion,
   bestScoreByRegion,
   summited,
+  conquered,
   resumable,
   onResume,
   onDiscard,
@@ -157,7 +160,24 @@ const ExpeditionSetup = ({
   const tooThin = pool !== null && pool.length < MIN_EXPEDITION_POOL;
   const ready = !!pool && !tooThin;
   const best = bestByRegion[regionToken(region)] ?? 0;
-  const conquered = summited.includes(regionToken(region));
+  const token = regionToken(region);
+  const isConquered = conquered.includes(token);
+  const isSummited = !isConquered && summited.includes(token);
+
+  /**
+   * The record panel's roll, conquests first. A region that has been cleared is
+   * listed as cleared and not also as topped — the stronger claim is the true
+   * one, and listing it twice would read as two different places.
+   */
+  const roll = useMemo(
+    () => [
+      ...conquered.map((entry) => ({ token: entry, cleared: true })),
+      ...summited
+        .filter((entry) => !conquered.includes(entry))
+        .map((entry) => ({ token: entry, cleared: false })),
+    ],
+    [conquered, summited],
+  );
 
   const toggleCategory = (category: Category) => {
     setCategories((current) => {
@@ -346,8 +366,11 @@ const ExpeditionSetup = ({
                     {t("expedition.setup.regionBest", { round: best })}
                   </span>
                 )}
-                {conquered && (
+                {isConquered && (
                   <span className="ml-2 text-signal-400">{t("expedition.conquest.here")}</span>
+                )}
+                {isSummited && (
+                  <span className="ml-2 text-beacon-400">{t("expedition.conquest.topped")}</span>
                 )}
               </span>
             )}
@@ -373,6 +396,7 @@ const ExpeditionSetup = ({
             <li>{t("expedition.rules.close")}</li>
             <li>{t("expedition.rules.lifelines")}</li>
             <li>{t("expedition.rules.ramp")}</li>
+            <li>{t("expedition.rules.conquest", { count: DESCENT_ROUNDS })}</li>
             <li>
               <EmojiText
                 text={t("expedition.rules.share")}
@@ -384,24 +408,36 @@ const ExpeditionSetup = ({
 
         <Panel
           title={t("expedition.conquest.title")}
-          subtitle={t("expedition.conquest.count", { count: summited.length })}
+          subtitle={t("expedition.conquest.count", { count: conquered.length })}
         >
-          {summited.length === 0 ? (
+          {roll.length === 0 ? (
             <p className="text-xs text-chart-400">{t("expedition.conquest.none")}</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
-              {summited.map((token) => {
-                const region = regionFromToken(token);
-                if (!region) return null;
-                const score = bestScoreByRegion[token] ?? 0;
+              {roll.map(({ token: entry, cleared }) => {
+                const listed = regionFromToken(entry);
+                if (!listed) return null;
+                const score = bestScoreByRegion[entry] ?? 0;
                 return (
                   <span
-                    key={token}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-signal-500/40 bg-signal-500/10 px-2.5 py-1 text-xs font-medium text-signal-300"
+                    key={entry}
+                    className={cx(
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
+                      cleared
+                        ? "border-signal-500/40 bg-signal-500/10 text-signal-300"
+                        : "border-beacon-500/30 bg-beacon-500/5 text-beacon-300/90",
+                    )}
+                    title={t(cleared ? "expedition.conquest.here" : "expedition.conquest.topped")}
                   >
-                    {regionLabel(region, t)}
+                    {cleared && <span aria-hidden>⭐</span>}
+                    {regionLabel(listed, t)}
                     {score > 0 && (
-                      <span className="text-signal-400/80 tabular-nums">
+                      <span
+                        className={cx(
+                          "tabular-nums",
+                          cleared ? "text-signal-400/80" : "text-beacon-400/70",
+                        )}
+                      >
                         {t("expedition.conquest.score", { score })}
                       </span>
                     )}

@@ -19,7 +19,10 @@ import {
   Challenge,
   EXPEDITION_LIVES,
   ExpeditionConfig,
+  ExpeditionRamp,
   ExpeditionRun as Run,
+  DESCENT_ROUNDS,
+  conquestRound,
   lastCard,
   loadExpeditionStats,
   nextRound,
@@ -28,6 +31,7 @@ import {
   recordRun,
   RoundEnding,
   roundFor,
+  requiredCards,
   roundScore,
   roundsReached,
   saveExpeditionStats,
@@ -63,8 +67,8 @@ import {
 
 interface ExpeditionRunProps {
   pool: City[];
-  /** Round one's radius for this pool, computed once by the parent. */
-  startRadius: number;
+  /** Where this pool's circle starts and stops, measured once by the parent. */
+  ramp: ExpeditionRamp;
   seed: string;
   config: ExpeditionConfig;
   /** A run picked up from storage, rather than started fresh. */
@@ -91,7 +95,7 @@ interface ExpeditionRunProps {
  */
 const ExpeditionRun = ({
   pool,
-  startRadius,
+  ramp,
   seed,
   config,
   restored,
@@ -104,7 +108,7 @@ const ExpeditionRun = ({
   // The run carries its own bar, and mute with it, so the site header goes.
   useFixedTopBar(true);
 
-  const [run, setRun] = useState<Run>(() => restored ?? startRun(seed, config, startRadius));
+  const [run, setRun] = useState<Run>(() => restored ?? startRun(seed, config, ramp));
   const [copied, setCopied] = useState(false);
   const [celebrate, setCelebrate] = useState(0);
   /** The beat between a card landing and the game asking for the next bet.
@@ -128,8 +132,8 @@ const ExpeditionRun = ({
   useWakeLock(!run.over);
 
   const round = useMemo(
-    () => roundFor(pool, startRadius, config, run.seed, run.round),
-    [pool, startRadius, config, run.seed, run.round],
+    () => roundFor(pool, ramp, config, run.seed, run.round, run.summitAt),
+    [pool, ramp, config, run.seed, run.round, run.summitAt],
   );
 
   const label = regionLabel(config.region, t);
@@ -250,8 +254,10 @@ const ExpeditionRun = ({
     setRun(next);
     setPeeking(false);
 
-    if (next.phase === "crossroads") {
-      // The card landed: the stack just grew by what this card was worth.
+    if (next.hits > run.hits) {
+      // The card landed: the stack just grew by what this card was worth. Shown
+      // whether the round then offers the crossroads or simply deals again,
+      // because what was won is the same either way.
       setGain({ value: pushValue(streak), key: Date.now() });
     } else if (next.ending === "bust") {
       setShake((count) => count + 1);
@@ -261,7 +267,7 @@ const ExpeditionRun = ({
     holdBeat();
 
     if (next.over) play("fanfare");
-    else if (next.phase === "crossroads") play("chime");
+    else if (next.hits > run.hits) play("chime");
     else play(next.ending === "close" ? "flip" : "buzz");
   };
 
@@ -294,10 +300,16 @@ const ExpeditionRun = ({
   };
 
   const advance = () => {
-    setRun((current) => nextRound(current));
+    const next = nextRound(run);
+    setRun(next);
     setGain(null);
     setPeeking(false);
-    play("flip");
+    if (next.conquered) {
+      play("fanfare");
+      setCelebrate((count) => count + 1);
+    } else {
+      play("flip");
+    }
   };
 
   const share = async () => {
@@ -344,7 +356,9 @@ const ExpeditionRun = ({
     bust: t("expedition.endedBust"),
   };
 
-  const banner = run.over
+  const banner = run.conquered
+    ? t("expedition.conquered.title")
+    : run.over
     ? t("expedition.over.title")
     : crossroads
       ? t("expedition.crossroads", { score: banked })
@@ -363,6 +377,12 @@ const ExpeditionRun = ({
       : null;
 
   const toSummit = Math.max(0, run.summitAt - run.round);
+  /** How many cards this round demands before the crossroads will appear. */
+  const quota = requiredCards(run.round, run.summitAt, config.categories.length);
+  /** Where the round stands against that demand, for the badge on the header. */
+  const quotaDone = Math.min(run.settled, quota);
+  /** How far down the descent this round is, once the summit is behind. */
+  const descentAt = Math.max(0, run.round - run.summitAt + 1);
   /** The score in the top bar, counted up rather than swapped out. */
   const shownScore = useCountUp(run.score);
   /** One life left is a state the whole screen should be in, not a grey dot. */
@@ -380,7 +400,7 @@ const ExpeditionRun = ({
    *  earlier, so the stake is visible while the card is still being placed. */
   const atStake = ended || run.over ? null : pushValue(streak);
   const dialLabel = run.summited
-    ? t("expedition.dial.summited", { round: run.round })
+    ? t("expedition.dial.descent", { round: descentAt, total: DESCENT_ROUNDS })
     : t("expedition.dial.climb", {
         round: run.round,
         summit: run.summitAt,
@@ -430,7 +450,7 @@ const ExpeditionRun = ({
               round={run.round}
               summitAt={run.summitAt}
               radius={round.radiusKm}
-              startRadius={startRadius}
+              startRadius={ramp.startKm}
               summited={run.summited}
               label={dialLabel}
             />
@@ -441,6 +461,16 @@ const ExpeditionRun = ({
                 {run.summited && (
                   <span className="ml-2 text-beacon-400" title={t("expedition.summit.title")}>
                     <Glyph name="chevrons-up" />
+                  </span>
+                )}
+                {/* A round that will not let you bank short says so up front,
+                    rather than surprising the player with a missing button. */}
+                {quota > 1 && !run.over && (
+                  <span
+                    className="ml-2 inline-flex items-center rounded-full border border-beacon-500/40 bg-beacon-500/10 px-1.5 py-px align-[1px] text-[10px] font-semibold text-beacon-300"
+                    title={t("expedition.quota.hint", { count: quota })}
+                  >
+                    {t("expedition.quota.badge", { done: quotaDone, count: quota })}
                   </span>
                 )}
               </div>
@@ -488,6 +518,7 @@ const ExpeditionRun = ({
           it, so the tally and the way back stay one tap away. */}
       {run.over && !beat && !peeking && (
         <RunOver
+          conquered={run.conquered}
           summited={run.summited}
           round={roundsReached(run)}
           score={run.score}
@@ -773,7 +804,11 @@ const ExpeditionRun = ({
             {/* The summit in words. The dial in the top bar draws it; this
                 says how far there is left to go. */}
             {run.summited ? (
-              <p className="text-xs text-beacon-400">{t("expedition.summit.past")}</p>
+              <p className="text-xs text-beacon-400">
+                {t("expedition.summit.past", {
+                  count: Math.max(0, conquestRound(run.summitAt) - run.round + 1),
+                })}
+              </p>
             ) : (
               <p className="text-xs text-chart-400">
                 {t("expedition.summit.toGo", { count: toSummit })}

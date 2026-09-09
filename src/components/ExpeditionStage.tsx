@@ -537,6 +537,7 @@ export const RoundResult = ({
  * the run — banked, banked, runner-up, bust is a story a number is not.
  */
 export const RunOver = ({
+  conquered,
   summited,
   round,
   score,
@@ -550,6 +551,8 @@ export const RunOver = ({
   onDismiss,
   t,
 }: {
+  /** The descent walked to its end — the run was won, not merely survived. */
+  conquered: boolean;
   summited: boolean;
   /** How deep the run got. */
   round: number;
@@ -567,9 +570,13 @@ export const RunOver = ({
   t: TFunction;
 }) => (
   <StageResult
-    tone={summited ? "signal" : "beacon"}
-    title={t("expedition.over.title")}
-    subtitle={t("expedition.over.reached", { round })}
+    tone={conquered || summited ? "signal" : "beacon"}
+    title={conquered ? t("expedition.conquered.title") : t("expedition.over.title")}
+    subtitle={
+      conquered
+        ? t("expedition.conquered.reached", { round })
+        : t("expedition.over.reached", { round })
+    }
     figure={history.map((record) => (
       <RoundPip key={record.number} ending={record.ending} />
     ))}
@@ -578,8 +585,12 @@ export const RunOver = ({
         <p className="text-sm text-chart-200">
           {t("expedition.over.score", { count: score, hits, cards })}
         </p>
-        {summited && (
-          <p className="mt-1 text-xs text-signal-400">{t("expedition.summit.done")}</p>
+        {conquered ? (
+          <p className="mt-1 text-xs text-signal-400">{t("expedition.conquered.done")}</p>
+        ) : (
+          summited && (
+            <p className="mt-1 text-xs text-signal-400">{t("expedition.summit.done")}</p>
+          )
         )}
         {challenge && (
           <p className="mt-1 text-xs text-chart-300">
