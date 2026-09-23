@@ -610,7 +610,8 @@ export const en = {
   "author.downloadHint":
     "Each day is one file. Download it and send it in — if it gets picked, it will be added to the daily schedule.",
 
-  "miss.km": "{value} km away",
+  "miss.kmNS": "{value} km off in north-south",
+  "miss.kmEW": "{value} km off in east-west",
   "miss.people": "{value} people out",
   "miss.metres": "{value} m out",
   "miss.area": "{value} km² out",
@@ -1474,7 +1475,8 @@ export const de: Record<MessageKey, string> = {
   "author.downloadHint":
     "Jeder Tag ist eine Datei. Lade sie herunter und schicke sie ein — wenn er ausgewählt wird, kommt er in den Tagesplan.",
 
-  "miss.km": "{value} km daneben",
+  "miss.kmNS": "{value} km in Nord-Süd-Richtung daneben",
+  "miss.kmEW": "{value} km in Ost-West-Richtung daneben",
   "miss.people": "{value} Einwohner daneben",
   "miss.metres": "{value} m daneben",
   "miss.area": "{value} km² daneben",

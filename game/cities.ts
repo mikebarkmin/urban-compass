@@ -319,6 +319,31 @@ export const distanceKm = (
 };
 
 /**
+ * North-south separation in kilometres: one degree of latitude is the same
+ * everywhere on the sphere, so the difference converts directly.
+ */
+const latitudeDeltaKm = (
+  a: { latitude: number },
+  b: { latitude: number },
+): number => Math.abs(b.latitude - a.latitude) * 111.195;
+
+/**
+ * East-west separation in kilometres at the pair's own latitude: a degree of
+ * longitude shrinks by the cosine of the latitude, so the difference is scaled
+ * by the mean of the two latitudes. Antimeridian pairs, where the sign flips
+ * around ±180°, are measured the short way around.
+ */
+const longitudeDeltaKm = (
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number },
+): number => {
+  let delta = Math.abs(b.longitude - a.longitude);
+  if (delta > 180) delta = 360 - delta;
+  const meanLat = ((a.latitude + b.latitude) / 2) * (Math.PI / 180);
+  return (delta * Math.PI / 180) * 6371 * Math.cos(meanLat);
+};
+
+/**
  * How far a guess was from the right answer, phrased for the card it was played
  * on: kilometres for the compass cards, people, metres or km² for the rest.
  *
@@ -361,13 +386,21 @@ export const missOf = (
     };
   }
 
-  if (guessed.latitude === null || guessed.longitude === null) return null;
+  const { latitude, longitude } = guessed;
+  if (latitude === null || latitude === undefined) return null;
+  if (longitude === null || longitude === undefined) return null;
+
+  // Compass cards are decided on one axis, so the miss is reported along that
+  // axis: a wrong "southernmost" is so many kilometres off in north-south, a
+  // wrong "easternmost" so many in east-west — not the diagonal crow-flies gap.
+  const axisKm =
+    field === "latitude"
+      ? latitudeDeltaKm({ latitude }, correct)
+      : longitudeDeltaKm({ latitude, longitude }, correct);
+
   return {
-    key: "miss.km",
-    value: distanceKm(
-      { latitude: guessed.latitude, longitude: guessed.longitude },
-      correct,
-    ).toLocaleString("en-US"),
+    key: field === "latitude" ? "miss.kmNS" : "miss.kmEW",
+    value: Math.round(axisKm).toLocaleString("en-US"),
   };
 };
 
