@@ -1,0 +1,44 @@
+name: Deploy PartyKit server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+jobs:
+  partykit:
+    name: Deploy PartyKit server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Deploy to PartyKit
+        run: npx partykit deploy
+        env:
+          PARTYKIT_TOKEN: ${{ secrets.PARTYKIT_TOKEN }}
+          PARTYKIT_LOGIN: ${{ secrets.PARTYKIT_LOGIN }}
+
+      # The room host the client connects to. Override it with a repository
+      # variable if the server lives on a custom domain.
+      - name: Resolve server URL
+        id: server
+        run: |
+          url="${{ vars.NEXT_PUBLIC_SERVER_URL }}"
+          if [ -z "$url" ]; then
+            name=$(node -p "require('./partykit.json').name")
+            url="${name}.${{ secrets.PARTYKIT_LOGIN }}.partykit.dev"
+          fi

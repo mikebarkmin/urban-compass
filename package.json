@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "npx serve@latest out",
     "lint": "next lint",
+    "test": "node --experimental-strip-types --no-warnings tests/cities.test.ts",
     "build:cities": "node scripts/build-cities.mjs",
     "build:sets": "node scripts/build-sets.mjs",
     "build:daily": "node scripts/build-daily.mjs",
