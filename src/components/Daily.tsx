@@ -341,49 +341,109 @@ const Daily = () => {
     <div className="grid gap-4 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:grid-cols-[1fr_320px] lg:pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <div className="space-y-4">
 
-        <Panel
-          title={t("daily.hand.title")}
-          subtitle={
-            revealed
-              ? legend
-              : selected
+        {/* Once revealed the answers lead: they are what the player came back
+            for, and the hand has nothing left to do. */}
+        {revealed && (
+          <Panel title={t("daily.answers")} subtitle={legend}>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {DAILY_CATEGORIES.map((category) => {
+                const answer = puzzle.answers[category];
+                const mine = puzzle.cities.find((c) => c.id === picks[category]);
+                const mark = markFor(puzzle, category, picks[category]);
+
+                return (
+                  <div
+                    key={category}
+                    className={cx("animate-rise rounded-xl border p-3", MARK_STYLE[mark])}
+                  >
+                    <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-chart-400 uppercase">
+                      <CategoryIcon category={category} className="text-beacon-500" />
+                      {t(`card.${category}`)}
+                      <span className="ml-auto flex items-center">
+                        <MarkSquare mark={mark} />
+                      </span>
+                    </div>
+
+                    <div className="mt-1.5 flex items-baseline gap-2">
+                      <span className="font-display text-lg font-bold text-beacon-400">
+                        {answer ? cityName(answer, locale) : ""}
+                      </span>
+                      {answer?.country && (
+                        <span className="font-mono text-[10px] text-chart-500">
+                          {answer.country}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-1 text-[11px] text-chart-500">
+                      {mark === "hit" ? (
+                        <span className="text-signal-400">{t("daily.youHadIt")}</span>
+                      ) : mine && answer ? (
+                        <>
+                          {t("daily.youPlayed", {
+                            city: cityName(mine, locale),
+                            miss: (() => {
+                              const miss = missOf(mine, answer, category);
+                              return miss ? t(miss.key, { value: miss.value }) : "";
+                            })(),
+                          })}
+                          {mark === "close" && (
+                            <span className="text-beacon-400">{t("daily.runnerUp")}</span>
+                          )}
+                          .
+                        </>
+                      ) : (
+                        t("daily.notPlayed")
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+        )}
+
+        {!revealed && (
+          <Panel
+            title={t("daily.hand.title")}
+            subtitle={
+              selected
                 ? t("daily.hand.pick")
                 : t("daily.hand.place", { count: DAILY_CATEGORIES.length })
-          }
-        >
-          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
-            {DAILY_CATEGORIES.map((category) => {
-              const cityId = picks[category];
-              const city = puzzle.cities.find((c) => c.id === cityId);
-              const isSelected = selected === category;
-              const mark = revealed ? markFor(puzzle, category, cityId) : null;
+            }
+          >
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+              {DAILY_CATEGORIES.map((category) => {
+                const cityId = picks[category];
+                const city = puzzle.cities.find((c) => c.id === cityId);
+                const isSelected = selected === category;
 
-              return (
-                <CategoryCard
-                  key={category}
-                  category={category}
-                  label={t(`card.${category}.short`)}
-                  disabled={revealed}
-                  onClick={() => setSelected(isSelected ? null : category)}
-                  tone={mark ?? (isSelected ? "selected" : cityId ? "filled" : "idle")}
-                  className={cx(
-                    !revealed && !isSelected && "hover:-translate-y-0.5",
-                    !revealed && !isSelected && !cityId && "hover:border-chart-400",
-                  )}
-                  footer={
-                    city ? (
-                      <span className="text-chart-300">
-                        <Glyph name="arrow-right" /> {cityName(city, locale)}
-                      </span>
-                    ) : (
-                      <span className="text-chart-600">{t("daily.notPlaced")}</span>
-                    )
-                  }
-                />
-              );
-            })}
-          </div>
-        </Panel>
+                return (
+                  <CategoryCard
+                    key={category}
+                    category={category}
+                    label={t(`card.${category}.short`)}
+                    onClick={() => setSelected(isSelected ? null : category)}
+                    tone={isSelected ? "selected" : cityId ? "filled" : "idle"}
+                    className={cx(
+                      !isSelected && "hover:-translate-y-0.5",
+                      !isSelected && !cityId && "hover:border-chart-400",
+                    )}
+                    footer={
+                      city ? (
+                        <span className="text-chart-300">
+                          <Glyph name="arrow-right" /> {cityName(city, locale)}
+                        </span>
+                      ) : (
+                        <span className="text-chart-600">{t("daily.notPlaced")}</span>
+                      )
+                    }
+                  />
+                );
+              })}
+            </div>
+          </Panel>
+        )}
 
         <Panel
           title={t("daily.board.title")}
@@ -391,7 +451,7 @@ const Daily = () => {
         >
           {revealed && (
             <div className="mb-3">
-              <MiniMap cities={puzzle.cities} highlights={highlights} height={260} />
+              <MiniMap cities={puzzle.cities} highlights={highlights} labels="all" height={380} />
             </div>
           )}
 
@@ -455,65 +515,6 @@ const Daily = () => {
           </div>
         </Panel>
 
-        {revealed && (
-          <Panel title={t("daily.answers")}>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {DAILY_CATEGORIES.map((category) => {
-                const answer = puzzle.answers[category];
-                const mine = puzzle.cities.find((c) => c.id === picks[category]);
-                const mark = markFor(puzzle, category, picks[category]);
-
-                return (
-                  <div
-                    key={category}
-                    className={cx("animate-rise rounded-xl border p-3", MARK_STYLE[mark])}
-                  >
-                    <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-chart-400 uppercase">
-                      <CategoryIcon category={category} className="text-beacon-500" />
-                      {t(`card.${category}`)}
-                      <span className="ml-auto flex items-center">
-                        <MarkSquare mark={mark} />
-                      </span>
-                    </div>
-
-                    <div className="mt-1.5 flex items-baseline gap-2">
-                      <span className="font-display text-lg font-bold text-beacon-400">
-                        {answer ? cityName(answer, locale) : ""}
-                      </span>
-                      {answer?.country && (
-                        <span className="font-mono text-[10px] text-chart-500">
-                          {answer.country}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-1 text-[11px] text-chart-500">
-                      {mark === "hit" ? (
-                        <span className="text-signal-400">{t("daily.youHadIt")}</span>
-                      ) : mine && answer ? (
-                        <>
-                          {t("daily.youPlayed", {
-                            city: cityName(mine, locale),
-                            miss: (() => {
-                              const miss = missOf(mine, answer, category);
-                              return miss ? t(miss.key, { value: miss.value }) : "";
-                            })(),
-                          })}
-                          {mark === "close" && (
-                            <span className="text-beacon-400">{t("daily.runnerUp")}</span>
-                          )}
-                          .
-                        </>
-                      ) : (
-                        t("daily.notPlayed")
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Panel>
-        )}
       </div>
 
       <div className="space-y-4">
