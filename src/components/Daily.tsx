@@ -10,7 +10,6 @@ import {
 } from "../../game/cities";
 import {
   DAILY_CATEGORIES,
-  DAILY_SET_ID,
   DailyStats,
   FIRST_KEY,
   Mark,
@@ -299,7 +298,7 @@ const Daily = () => {
                     })
                   : t("daily.meta", {
                       date: puzzle.key,
-                      set: t(`set.${DAILY_SET_ID}.name`),
+                      set: t(`set.${puzzle.setId}.name`),
                       count: puzzle.cities.length,
                     })}
               </div>

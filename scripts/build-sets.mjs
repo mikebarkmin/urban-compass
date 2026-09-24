@@ -59,10 +59,25 @@ for (const row of cities5000) {
 const sets = {};
 const warnings = [];
 
+// A set may "extend" another, starting from that set's cities and overrides
+// and adding its own, so a bigger pool does not restate the list it grows.
+const byDefId = new Map(setDefs.map((def) => [def.id, def]));
+const cityIdsOf = (def) => {
+  const base = def.extends ? byDefId.get(def.extends) : null;
+  if (def.extends && !base) {
+    warnings.push(`${def.id}: extends unknown set "${def.extends}" — its own cities only`);
+  }
+  return [...new Set([...(base ? cityIdsOf(base) : []), ...def.cities])];
+};
+const overridesOf = (def) => {
+  const base = def.extends ? byDefId.get(def.extends) : null;
+  return { ...(base ? overridesOf(base) : {}), ...def.overrides };
+};
+
 for (const def of setDefs) {
   const cities = [];
 
-  for (const geonameId of def.cities) {
+  for (const geonameId of cityIdsOf(def)) {
     const row = byId.get(geonameId);
     if (!row) {
       warnings.push(`${def.id}: geonameid ${geonameId} not found in cities5000.json — skipped`);
@@ -83,10 +98,8 @@ for (const def of setDefs) {
   }
 
   // Append override cities (sub-5000 outposts not in cities5000.json).
-  if (def.overrides) {
-    for (const city of Object.values(def.overrides)) {
-      cities.push(city);
-    }
+  for (const city of Object.values(overridesOf(def))) {
+    cities.push(city);
   }
 
   sets[def.id] = cities;
@@ -117,7 +130,10 @@ if (warnings.length > 0) {
 
 // ── Generate setDefsIndex.gen.ts (metadata for import in citySets.ts) ───
 
+// A "dailyOnly" set is a pool for the daily draw, not something a host picks,
+// so it gets cities but stays out of the index CITY_SETS is built from.
 const indexEntries = setDefs
+  .filter((def) => !def.dailyOnly)
   .map(
     (def) =>
       `  ${JSON.stringify(def.id)}: ` +

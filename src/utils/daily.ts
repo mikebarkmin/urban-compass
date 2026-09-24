@@ -15,8 +15,8 @@ import authoredDays from "../../game/data/dailyBoards.generated.json";
 
 /**
  * The solo puzzle. Everybody gets the same board on the same day, drawn from
- * one fixed set so that scores are worth comparing, and generated from the date
- * alone so that no server has to remember anything.
+ * the day's set, and generated from the date alone so that no server has to
+ * remember anything.
  *
  * A day can also be hand-authored: `game/data/daily/` holds one file per board,
  * and anything in there wins over the draw. Those files name their cities by
@@ -31,7 +31,28 @@ const EPOCH = Date.UTC(2026, 0, 1);
 const DAY_MS = 86_400_000;
 
 export const DAILY_CITY_COUNT = 8;
-export const DAILY_SET_ID = "europe";
+
+/**
+ * The sets a drawn day rotates through, one per day. Europe alone kept dealing
+ * the same few dozen cities; walking the continents spreads the draw, and
+ * "world" stands in for the places without a set of their own. Europe's turn
+ * draws from "europe-daily", the classic board plus the big names it leaves
+ * out, which is a daily-only pool rather than a set a host can pick.
+ */
+export const DAILY_SET_ROTATION = ["europe-daily", "asia", "north-america", "africa", "world"];
+
+/**
+ * Every drawn day before this one came from Europe, and stays that way: a board
+ * someone has already played must not change underneath their saved picks.
+ */
+const ROTATION_START = "2026-09-25";
+const LEGACY_SET_ID = "europe";
+
+/** The set a drawn day comes from. Pure, like everything else about the day. */
+export const dailySetFor = (key: string): string =>
+  key < ROTATION_START
+    ? LEGACY_SET_ID
+    : DAILY_SET_ROTATION[puzzleNumber(key) % DAILY_SET_ROTATION.length];
 
 /** An authored board still has to fit on the same screen as a drawn one. */
 const MAX_AUTHORED_CITIES = 16;
@@ -176,6 +197,8 @@ export interface DailyPuzzle {
   runnersUp: Record<Category, City | null>;
   /** Whether this board was hand-authored rather than drawn. */
   authored: boolean;
+  /** The set a drawn board came from. */
+  setId: string;
   /** What an authored board is about, when it says. */
   theme?: Theme;
 }
@@ -187,11 +210,12 @@ export interface DailyPuzzle {
  */
 export const buildPuzzle = (key: string): DailyPuzzle => {
   const authored = AUTHORED[key];
+  const setId = dailySetFor(key);
 
   const cities = authored
     ? authored.cities
     : drawBoard(
-        builtSetCities[DAILY_SET_ID],
+        builtSetCities[setId],
         DAILY_CITY_COUNT,
         "balanced",
         mulberry32(seedFromString(`urban-compass/${key}`)),
@@ -210,6 +234,7 @@ export const buildPuzzle = (key: string): DailyPuzzle => {
     answers: getCorrectAnswers(cities, DAILY_CATEGORIES),
     runnersUp,
     authored: !!authored,
+    setId,
     ...(authored?.theme ? { theme: authored.theme } : {}),
   };
 };
