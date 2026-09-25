@@ -33,26 +33,30 @@ const DAY_MS = 86_400_000;
 export const DAILY_CITY_COUNT = 8;
 
 /**
- * The sets a drawn day rotates through, one per day. Europe alone kept dealing
- * the same few dozen cities; walking the continents spreads the draw, and
- * "world" stands in for the places without a set of their own. Europe's turn
- * draws from "europe-daily", the classic board plus the big names it leaves
- * out, which is a daily-only pool rather than a set a host can pick.
+ * A drawn day is always European. It draws from "europe-daily", the classic
+ * board plus the big names it leaves out, so the same few dozen cities do not
+ * keep coming back; that is a daily-only pool rather than a set a host can pick.
+ * Other continents reach the daily through authored boards.
  */
-export const DAILY_SET_ROTATION = ["europe-daily", "asia", "north-america", "africa", "world"];
+export const DAILY_SET_ID = "europe-daily";
 
 /**
- * Every drawn day before this one came from Europe, and stays that way: a board
- * someone has already played must not change underneath their saved picks.
+ * Drawn days before this one came from the 89-city "europe" set, and stay that
+ * way: a board someone has already played must not change underneath their
+ * saved picks.
  */
-const ROTATION_START = "2026-09-25";
+const POOL_START = "2026-09-25";
 const LEGACY_SET_ID = "europe";
+
+/**
+ * Days that were drawn from another set while the daily briefly walked the
+ * continents, pinned for the same reason.
+ */
+const PINNED_SETS: Record<string, string> = { "2026-09-25": "africa" };
 
 /** The set a drawn day comes from. Pure, like everything else about the day. */
 export const dailySetFor = (key: string): string =>
-  key < ROTATION_START
-    ? LEGACY_SET_ID
-    : DAILY_SET_ROTATION[puzzleNumber(key) % DAILY_SET_ROTATION.length];
+  key < POOL_START ? LEGACY_SET_ID : (PINNED_SETS[key] ?? DAILY_SET_ID);
 
 /** An authored board still has to fit on the same screen as a drawn one. */
 const MAX_AUTHORED_CITIES = 16;
